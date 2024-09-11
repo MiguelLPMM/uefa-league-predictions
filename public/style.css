@@ -1,0 +1,86 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+h1 {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.container {
+    display: flex;
+    height: calc(100% - 60px); /* Adjust height based on header */
+}
+
+#league-table {
+    width: 33.33%;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto; /* Enable vertical scrolling */
+    height: 100%;
+}
+
+#matches {
+    width: 66.67%;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto; /* Enable vertical scrolling */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    height: 100%;
+}
+
+.match {
+    display: flex;
+    justify-content: space-between;
+    width: calc(50% - 20px);
+    border: 1px solid #ddd;
+    padding: 10px;
+    box-sizing: border-box;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.home, .away {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 50%;
+}
+
+.home img, .away img {
+    height: 40px;
+    margin-right: 10px;
+}
+
+.home span, .away span {
+    margin: 0 10px;
+}
+
+input[type="number"] {
+    width: 40px;
+    height: 40px;
+    text-align: center;
+    font-size: 18px;
+    margin: 0 10px;
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"]::placeholder {
+    color: #999;
+}
