@@ -47,9 +47,9 @@ app.get('/api/matches/uel', async (req, res) => {
 app.get('/api/matches/uecl', async (req, res) => {
     try {
         const matches = await getMatches({
-            competitionId: 2019,  // UEFA European Conference League
+            competitionId: 2019,  // UEFA Champions League
             seasonYear: 2025,
-        }, 'ASC', 234);
+        }, 'ASC', 364);
         // Filter out matches based on type and round
         const groupStageMatches = matches.filter(match =>
             match.type === 'GROUP_STAGE'
@@ -57,7 +57,7 @@ app.get('/api/matches/uecl', async (req, res) => {
         res.json(groupStageMatches);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error fetching Conference League matches' });
+        res.status(500).json({ error: 'Error fetching Champions League matches' });
     }
 });
 
