@@ -92,6 +92,7 @@ nav h1 {
     box-sizing: border-box;
     overflow-y: auto; /* Enable vertical scrolling */
     height: 100%;
+    display: none; /* Initially hidden */
 }
 
 #league-table img {
