@@ -11,21 +11,27 @@ const colorSchemes = {
         nav: '#0230f7',         // copy button background, notification
         top8: '#17177a',
         match: '#0a0a61',       // comp/copy button hover, top 24, input background
-        score: '#00eeff'
+        score: '#00eeff',
+        icon: 'assets/ucl.ico',
+        name: 'Champions'
     },
     uel: {
         background: 'black',
         nav: 'black',
         top8: '#3a3a3c',
         match: '#1c1c1e',
-        score: '#ff6900'
+        score: '#ff6900',
+        icon: 'assets/uel.ico',
+        name: 'Europa'
     },
     uecl: {
         background: 'black',
         nav: 'black',
         top8: '#3a3a3c',
         match: '#1c1c1e',
-        score: '#00be14'
+        score: '#00be14',
+        icon: 'assets/uecl.ico',
+        name: 'Conference'
     }
 };
 
@@ -187,6 +193,17 @@ function updateColorScheme() {
     // Apply color scheme to notification
     const notification = document.getElementById('notification');
     notification.style.backgroundColor = colors.nav;
+
+    // Update the favicon
+    const favicon = document.querySelector('link[rel="icon"]');
+    favicon.href = colors.icon;
+
+    // Update the header
+    const header = document.getElementById('header');
+    header.textContent = `UEFA ${colors.name} League Predictions`;
+
+    // Update the title
+    document.title = `UEFA ${colors.name} League Predictions`;
 
 }
 
