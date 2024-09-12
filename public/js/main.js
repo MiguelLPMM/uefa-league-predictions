@@ -3,12 +3,42 @@ let teamsData = {};
 
 let notificationTimeout; // Variable to store the timeout ID for the notification
 
+let currentComp = 'ucl'; // Default competition
+
+const colorSchemes = {
+    ucl: {
+        background: '#000040',
+        nav: '#0230f7',         // copy button background, notification
+        top8: '#17177a',
+        match: '#0a0a61',       // comp/copy button hover, top 24, input background
+        score: '#00eeff'
+    },
+    uel: {
+        background: 'black',
+        nav: 'black',
+        top8: '#3a3a3c',
+        match: '#1c1c1e',
+        score: '#ff6900'
+    },
+    uecl: {
+        background: 'black',
+        nav: 'black',
+        top8: '#3a3a3c',
+        match: '#1c1c1e',
+        score: '#00be14'
+    }
+};
+
 // Fetch matches from the backend and display them
 async function fetchMatches(comp) {
     // Show loading indicator and hide matches container
     document.getElementById('loading-indicator').style.display = 'block';
     document.getElementById('matches').style.display = 'none';
     document.getElementById('league-table').style.display = 'none';
+
+    currentComp = comp; // Update the current competition
+
+    updateColorScheme(); // Update the color scheme based on the competition
 
     teamsData = {}; // Reset teamsData object when fetching new matches
     const response = await fetch('/api/matches/' + comp);
@@ -94,6 +124,70 @@ async function fetchMatches(comp) {
     document.getElementById('loading-indicator').style.display = 'none';
     document.getElementById('matches').style.display = 'block';
     document.getElementById('league-table').style.display = 'block';
+}
+
+// Function to update the color scheme
+function updateColorScheme() {
+    const colors = colorSchemes[currentComp] || colorSchemes.ucl; // Default to ucl if comp is not found
+    
+    // Apply color scheme to the body
+    document.body.style.backgroundColor = colors.background;
+    
+    // Apply color scheme to navigation bar
+    const navBar = document.querySelector('nav');
+    navBar.style.backgroundColor = colors.nav;
+
+    // Apply color scheme to top 8 teams
+    const top8Rows = document.querySelectorAll('.top-8');
+    top8Rows.forEach(row => {
+        row.style.backgroundColor = colors.top8;
+    });
+
+    // Apply color scheme to top 24 teams
+    const top24Rows = document.querySelectorAll('.top-24');
+    top24Rows.forEach(row => {
+        row.style.backgroundColor = colors.match;
+    });
+
+    // Apply color scheme to matches
+    const matches = document.querySelectorAll('.match');
+    matches.forEach(match => {
+        match.style.backgroundColor = colors.match;
+    });
+
+    // Apply color scheme to score inputs
+    const scoreInputs = document.querySelectorAll('input[type="text"] , input[type="number"]');
+    scoreInputs.forEach(input => {
+        input.style.backgroundColor = colors.match;
+        input.style.borderColor = colors.score;
+    });
+
+    // Apply color scheme to competition buttons
+    const compButtons = document.querySelectorAll('.comp-button');
+    compButtons.forEach(button => {
+        button.style.backgroundColor = colors.nav;
+        button.addEventListener('mouseover', () => {
+            button.style.backgroundColor = colors.match;
+        });
+        button.addEventListener('mouseout', () => {
+            button.style.backgroundColor = colors.nav;
+        });
+    });
+
+    // Apply color scheme to copy standings button
+    const copyStandingsButton = document.getElementById('copy-standings');
+    copyStandingsButton.style.backgroundColor = colors.nav;
+    copyStandingsButton.addEventListener('mouseover', () => {
+        copyStandingsButton.style.backgroundColor = colors.match;
+    });
+    copyStandingsButton.addEventListener('mouseout', () => {
+        copyStandingsButton.style.backgroundColor = colors.nav;
+    });
+
+    // Apply color scheme to notification
+    const notification = document.getElementById('notification');
+    notification.style.backgroundColor = colors.nav;
+
 }
 
 // Function to update team stats based on score input
@@ -199,6 +293,8 @@ function updateLeagueTable() {
         `;
         tableBody.appendChild(row);
     });
+
+    updateColorScheme();
 }
 
 // Function to get the team names and format them for copying
@@ -295,8 +391,8 @@ function moveFocus(currentInput, direction) {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('copy-standings').addEventListener('click', copyStandingsToClipboard);
 
-    const buttons = document.querySelectorAll('.comp-button');
-    buttons.forEach(button => {
+    const compButtons = document.querySelectorAll('.comp-button');
+    compButtons.forEach(button => {
         button.addEventListener('click', () => {
             const arg = button.getAttribute('data-arg');
             fetchMatches(arg);

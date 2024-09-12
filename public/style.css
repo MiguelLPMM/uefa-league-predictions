@@ -122,12 +122,12 @@ nav h1 {
 }
 
 /* Add styles for the top 8 teams */
-#league-table .top-8 {
+.top-8 {
     background-color: #17177a; /* Light blue background for the top 8 teams */
 }
 
 /* Add styles for the teams between 9-24 */
-#league-table .top-24 {
+.top-24 {
     background-color: #0a0a61; /* Dark blue background for the teams between 9-24 */
 }
 
