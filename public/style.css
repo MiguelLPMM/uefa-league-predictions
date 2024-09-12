@@ -213,6 +213,7 @@ input[type="number"], input[type="text"] {
     border: 2px solid #00eeff;
     border-radius: 5px;
     -moz-appearance: textfield; /* Remove the up and down arrows from number inputs */
+    appearance: textfield;      /* Define the standard property 'appearance' for compatibility */
 }
 
 /* Remove the up and down arrows from number inputs */
