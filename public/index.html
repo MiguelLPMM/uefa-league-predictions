@@ -7,10 +7,22 @@
     <link rel="stylesheet" href="style.css">
 
     <script src="js/main.js"></script>  <!-- Link to external script -->
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 </head>
 <body>
     <nav>
-        <h1>UEFA League Predictions</h1>
+        <div class="left">
+            <!-- Future elements can be added here -->
+        </div>
+        <div class="center">
+            <h1>UEFA League Predictions</h1>
+        </div>
+        <div class="right">
+            <button id="copy-standings" class="copy-btn">
+                <i class="material-icons">content_copy</i>
+            </button>
+        </div>
     </nav>
     <div class="container">
         <div id="league-table">
@@ -39,5 +51,6 @@
             <!-- Matches will be dynamically updated here -->
         </div>
     </div>
+    <div id="notification" class="notification"></div>
 </body>
 </html>

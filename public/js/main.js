@@ -1,6 +1,8 @@
 // Object to store team information
 let teamsData = {};
 
+let notificationTimeout; // Variable to store the timeout ID for the notification
+
 // Fetch matches from the backend and display them
 async function fetchMatches() {
     const response = await fetch('/api/matches');
@@ -154,5 +156,51 @@ function updateLeagueTable() {
         tableBody.appendChild(row);
     });
 }
+
+// Function to get the team names and format them for copying
+function getTeamNames() {
+    const tableRows = document.querySelectorAll('#league-table tbody tr');
+    let teamNames = '';
+
+    tableRows.forEach(row => {
+        const teamNameCell = row.querySelector('td:nth-child(3)'); // Adjust the index based on your table structure
+        if (teamNameCell) {
+            teamNames += teamNameCell.textContent.trim() + '\n';
+        }
+    });
+
+    return teamNames.trim(); // Remove the trailing newline
+}
+
+// Function to copy the standings to the clipboard
+function copyStandingsToClipboard() {
+    const teamNames = getTeamNames();
+    navigator.clipboard.writeText(teamNames).then(() => {
+        showNotification('Standings copied to clipboard!');
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+function showNotification(message) {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.style.display = 'block';
+
+    // Clear any existing timeout
+    if (notificationTimeout) {
+        clearTimeout(notificationTimeout);
+    }
+
+    // Hide the notification after 3 seconds
+    notificationTimeout = setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
+}
+
+// Add event listener for the button
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('copy-standings').addEventListener('click', copyStandingsToClipboard);
+});
 
 window.onload = fetchMatches;

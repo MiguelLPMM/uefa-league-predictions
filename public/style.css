@@ -13,16 +13,45 @@ body {
 nav {
     background-color: #0230f7; /* Navbar background color */
     padding: 1em;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Space between sections */
+    position: relative;
+}
+
+nav .left, nav .center, nav .right {
+    flex: 1; /* Equal width for all sections */
+    display: flex;
+    align-items: center;
+}
+
+nav .center {
+    justify-content: center; /* Center the h1 */
+}
+
+nav .right {
+    justify-content: flex-end; /* Align the button to the right */
 }
 
 nav h1 {
     margin: 0;
 }
 
-h1 {
-    text-align: center;
-    margin: 20px 0;
+.copy-btn {
+    background-color: #0230f7; /* Match the navbar color */
+    color: white;
+    border: none;
+    padding: 0.5em;
+    font-size: 1.2em; /* Adjust size to fit the icon */
+    cursor: pointer;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-btn:hover {
+    background-color: #0a0a61; /* Darker shade on hover */
 }
 
 /* Container for main content */
@@ -138,4 +167,20 @@ input[type="text"]::-webkit-outer-spin-button {
 input[type="number"]::placeholder,
 input[type="text"]::placeholder {
     color: #999;
+}
+
+/* Notification styles */
+.notification {
+    display: none; /* Initially hidden */
+    position: fixed; /* Fixed positioning */
+    bottom: 20px; /* Distance from the bottom */
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Offset the element by half its width to truly center it */
+    background-color: #0230f7; /* Blue background */
+    color: white; /* White text color */
+    padding: 10px 20px; /* Padding around the text */
+    border-radius: 5px; /* Rounded corners */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Shadow for better visibility */
+    font-size: 16px; /* Font size */
+    z-index: 1000; /* Ensure it appears above other content */
 }
