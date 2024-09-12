@@ -30,6 +30,27 @@ nav .left, nav .center, nav .right {
     align-items: center;
 }
 
+.left {
+    display: flex;
+    justify-content: flex-start; /* Align the button to the left */
+    align-items: center;
+}
+
+.nav-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.nav-button:hover {
+    background-color: #0a0a61; /* Darker shade on hover */
+}
+
+.nav-button img {
+    width: 2em; /* Adjust size as needed */
+    height: 2em; /* Adjust size as needed */
+}
+
 nav .center {
     justify-content: center; /* Center the h1 */
 }
