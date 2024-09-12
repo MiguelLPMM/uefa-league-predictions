@@ -9,21 +9,55 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// Route to fetch matches from the API
-app.get('/api/matches', async (req, res) => {
+// Routes to fetch matches from the API
+app.get('/api/matches/ucl', async (req, res) => {
     try {
-        const uclMatches = await getMatches({
+        const matches = await getMatches({
             competitionId: 1,  // UEFA Champions League
             seasonYear: 2025,
         }, 'ASC', 234);
         // Filter out matches based on type and round
-        const uclGroupStageMatches = uclMatches.filter(match =>
+        const groupStageMatches = matches.filter(match =>
             match.type === 'GROUP_STAGE'
         );
-        res.json(uclGroupStageMatches);
+        res.json(groupStageMatches);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error fetching matches' });
+        res.status(500).json({ error: 'Error fetching Champions League matches' });
+    }
+});
+
+app.get('/api/matches/uel', async (req, res) => {
+    try {
+        const matches = await getMatches({
+            competitionId: 14,  // UEFA Europa League
+            seasonYear: 2025,
+        }, 'ASC', 234);
+        // Filter out matches based on type and round
+        const groupStageMatches = matches.filter(match =>
+            match.type === 'GROUP_STAGE'
+        );
+        res.json(groupStageMatches);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error fetching Europa League matches' });
+    }
+});
+
+app.get('/api/matches/uecl', async (req, res) => {
+    try {
+        const matches = await getMatches({
+            competitionId: 2019,  // UEFA European Conference League
+            seasonYear: 2025,
+        }, 'ASC', 234);
+        // Filter out matches based on type and round
+        const groupStageMatches = matches.filter(match =>
+            match.type === 'GROUP_STAGE'
+        );
+        res.json(groupStageMatches);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error fetching Conference League matches' });
     }
 });
 

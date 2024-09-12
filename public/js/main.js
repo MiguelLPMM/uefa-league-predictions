@@ -4,8 +4,9 @@ let teamsData = {};
 let notificationTimeout; // Variable to store the timeout ID for the notification
 
 // Fetch matches from the backend and display them
-async function fetchMatches() {
-    const response = await fetch('/api/matches');
+async function fetchMatches(comp) {
+    teamsData = {}; // Reset teamsData object when fetching new matches
+    const response = await fetch('/api/matches/' + comp);
     const matches = await response.json();
     const matchesDiv = document.getElementById('matches');
     matchesDiv.innerHTML = '';  // Clear previous matches
@@ -283,6 +284,14 @@ function moveFocus(currentInput, direction) {
 // Add event listener for the button
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('copy-standings').addEventListener('click', copyStandingsToClipboard);
+
+    const buttons = document.querySelectorAll('.comp-button');
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            const arg = button.getAttribute('data-arg');
+            fetchMatches(arg);
+        });
+    });
 });
 
-window.onload = fetchMatches;
+window.onload = fetchMatches("ucl");
