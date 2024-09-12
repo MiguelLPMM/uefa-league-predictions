@@ -10,45 +10,74 @@ async function fetchMatches() {
     const matchesDiv = document.getElementById('matches');
     matchesDiv.innerHTML = '';  // Clear previous matches
 
+    let currentMatchday = 0;
+    let matchdayDiv = null; // Initialize outside the loop
+
     matches.forEach(match => {
-        const homeTeamName = match.homeTeam.internationalName;
-        const homeTeamLogo = match.homeTeam.logoUrl;
-        const awayTeamName = match.awayTeam.internationalName;
-        const awayTeamLogo = match.awayTeam.logoUrl;
-
-        // Initialize teams in the teamsData object if not already present
-        if (!teamsData[homeTeamName]) {
-            teamsData[homeTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: homeTeamLogo };
+        if (match.matchday.sequenceNumber !== currentMatchday) {
+            currentMatchday = match.matchday.sequenceNumber;
+            
+            // Create a new matchday header and div for matches when matchday changes
+            matchdayDiv = document.createElement('div'); // Create a new matchday div
+            matchdayDiv.classList.add('matchday');
+            matchesDiv.appendChild(matchdayDiv);
+            
+            const matchdayHeader = document.createElement('h2');
+            matchdayHeader.textContent = `Matchday ${currentMatchday}`;
+            matchdayDiv.appendChild(matchdayHeader);
+            
+            // Create a container for the matches
+            const matchesContainer = document.createElement('div');
+            matchesContainer.classList.add('matches');
+            matchdayDiv.appendChild(matchesContainer);
         }
-        if (!teamsData[awayTeamName]) {
-            teamsData[awayTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: awayTeamLogo };
+
+        if (matchdayDiv) { // Ensure matchdayDiv is defined
+            const homeTeamName = match.homeTeam.internationalName;
+            const homeTeamLogo = match.homeTeam.logoUrl;
+            const awayTeamName = match.awayTeam.internationalName;
+            const awayTeamLogo = match.awayTeam.logoUrl;
+
+            // Initialize teams in the teamsData object if not already present
+            if (!teamsData[homeTeamName]) {
+                teamsData[homeTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: homeTeamLogo };
+            }
+            if (!teamsData[awayTeamName]) {
+                teamsData[awayTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: awayTeamLogo };
+            }
+
+            teamsData[homeTeamName].matches[match.id] = { gf: 0, ga: 0 };
+            teamsData[awayTeamName].matches[match.id] = { gf: 0, ga: 0 };
+
+            // Create the match element
+            const matchDiv = document.createElement('div');
+            matchDiv.classList.add('match');
+
+            matchDiv.innerHTML = `
+                <div class="home">
+                    <img src="${homeTeamLogo}" alt="${homeTeamName} logo">
+                    <span>${homeTeamName}</span>
+                    <input type="text" pattern="\\d*" id="home-${match.id}" class="score-input" placeholder="0" maxlength="2" />
+                </div>
+                <div class="away">
+                    <input type="text" pattern="\\d*" id="away-${match.id}" class="score-input" placeholder="0" maxlength="2" />
+                    <span>${awayTeamName}</span>
+                    <img src="${awayTeamLogo}" alt="${awayTeamName} logo">
+                </div>
+            `;
+
+            // Append the match to the matches container
+            matchdayDiv.querySelector('.matches').appendChild(matchDiv);  
+
+            // Add event listeners to update team data when scores change
+            const homeInput = document.getElementById(`home-${match.id}`);
+            const awayInput = document.getElementById(`away-${match.id}`);
+
+            homeInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
+            awayInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
+
+            updateTeamStats(match.id, homeTeamName, awayTeamName);
         }
-
-        teamsData[homeTeamName].matches[match.id] = { gf: 0, ga: 0 };
-        teamsData[awayTeamName].matches[match.id] = { gf: 0, ga: 0 };
-
-        const matchDiv = document.createElement('div');
-        matchDiv.classList.add('match');
-
-        matchDiv.innerHTML = `
-            <div class="home">
-                <img src="${homeTeamLogo}" alt="${homeTeamName} logo">
-                <span>${homeTeamName}</span>
-                <input type="text" pattern="\d*" id="home-${match.id}" class="score-input" placeholder="0" maxlength="2" />
-            </div>
-            <div class="away">
-                <input type="text" pattern="\d*" id="away-${match.id}" class="score-input" placeholder="0" maxlength="2" />
-                <span>${awayTeamName}</span>
-                <img src="${awayTeamLogo}" alt="${awayTeamName} logo">
-            </div>
-        `;
-        matchesDiv.appendChild(matchDiv);
-
-        // Add event listeners to update team data when scores change
-        document.getElementById(`home-${match.id}`).addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
-        document.getElementById(`away-${match.id}`).addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
-
-        updateTeamStats(match.id, homeTeamName, awayTeamName);
     });
 }
 

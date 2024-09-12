@@ -109,28 +109,51 @@ nav h1 {
     background-color: #0a0a61; /* Dark blue background for the teams between 9-24 */
 }
 
+/* Container for matchdays */
 #matches {
     width: 66.67%;
     padding: 20px;
     box-sizing: border-box;
-    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-y: auto;
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
+    flex-direction: column; /* Stack matchdays vertically */
     height: 100%;
 }
 
-.match {
-    background-color: #0a0a61; /* Match div background color */
-    display: flex;
-    justify-content: space-between;
-    width: calc(50% - 20px);
-    padding: 10px;
-    box-sizing: border-box;
-    align-items: center;
+/* Matchday container */
+.matchday {
+    display: grid;
+    grid-template-columns: 1fr; /* Single column for the matchday header */
+    gap: 20px;
     margin-bottom: 20px;
 }
 
+/* Matchday header */
+.matchday h2 {
+    grid-column: span 2; /* Span the entire width of the grid */
+    margin: 0;
+}
+
+/* Matches container within the matchday */
+.matchday .matches {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Two columns for matches */
+    gap: 20px;
+}
+
+/* Individual match */
+.match {
+    background-color: #0a0a61;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    box-sizing: border-box;
+    align-items: center;
+    width: 100%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Optional: Adds shadow for better separation */
+}
+
+/* Flex container for home and away */
 .home, .away {
     display: flex;
     align-items: center;
@@ -172,6 +195,17 @@ input[type="text"]::-webkit-outer-spin-button {
 input[type="number"]::placeholder,
 input[type="text"]::placeholder {
     color: #999;
+}
+
+/* Media query for devices where height is larger than width */
+@media (orientation: portrait) {
+    #matches {
+        width: 100%;
+    }
+
+    .matchday .matches {
+        grid-template-columns: 1fr; /* Single column layout for portrait mode */
+    }
 }
 
 /* Notification styles */
