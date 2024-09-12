@@ -64,6 +64,7 @@ async function fetchMatches(comp) {
             matchdayDiv.classList.add('matchday');
             matchesDiv.appendChild(matchdayDiv);
             
+            // Create a header for the matchday
             const matchdayHeader = document.createElement('h2');
             matchdayHeader.textContent = `Matchday ${currentMatchday}`;
             matchdayDiv.appendChild(matchdayHeader);
@@ -115,10 +116,11 @@ async function fetchMatches(comp) {
             const homeInput = document.getElementById(`home-${match.id}`);
             const awayInput = document.getElementById(`away-${match.id}`);
 
+            // Add input event listeners for updating match results
             homeInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
             awayInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
 
-            // Add keydown event listeners for handling arrow keys
+            // Add keydown event listeners for handling arrow keys movement
             homeInput.addEventListener('keydown', handleScoreInputKeydown);
             awayInput.addEventListener('keydown', handleScoreInputKeydown);
 
@@ -212,6 +214,7 @@ function updateTeamStats(matchId, homeTeamName, awayTeamName) {
     const homeScore = parseInt(document.getElementById(`home-${matchId}`).value) || 0;
     const awayScore = parseInt(document.getElementById(`away-${matchId}`).value) || 0;
 
+    // Update match data
     teamsData[homeTeamName].matches[matchId].gf = homeScore;
     teamsData[homeTeamName].matches[matchId].ga = awayScore;
     teamsData[awayTeamName].matches[matchId].gf = awayScore;
@@ -229,6 +232,7 @@ function updateTeamStats(matchId, homeTeamName, awayTeamName) {
     teamsData[awayTeamName].draws = 0;
     teamsData[awayTeamName].losses = 0;
 
+    // Home team stats
     for (const homeTeamMatch of Object.values(teamsData[homeTeamName].matches)) {
         teamsData[homeTeamName].goalsFor += homeTeamMatch.gf;
         teamsData[homeTeamName].goalsAgainst += homeTeamMatch.ga;
@@ -242,6 +246,7 @@ function updateTeamStats(matchId, homeTeamName, awayTeamName) {
     }
     teamsData[homeTeamName].points = teamsData[homeTeamName].wins * 3 + teamsData[homeTeamName].draws;
 
+    // Away team stats
     for (const awayTeamMatch of Object.values(teamsData[awayTeamName].matches)) {
         teamsData[awayTeamName].goalsFor += awayTeamMatch.gf;
         teamsData[awayTeamName].goalsAgainst += awayTeamMatch.ga;
@@ -255,7 +260,7 @@ function updateTeamStats(matchId, homeTeamName, awayTeamName) {
     }
     teamsData[awayTeamName].points = teamsData[awayTeamName].wins * 3 + teamsData[awayTeamName].draws;
 
-    // Now you can call a function to update the league table display
+    // Update the league table display
     updateLeagueTable();
 }
 
@@ -271,6 +276,8 @@ function updateLeagueTable() {
     }));
 
     // Sort teams first by points, then by goal difference, then by goals for, and finally alphabetically
+    // Yes, there are other criteria but they are not incapsulated in this site
+    // And yes, alphabetical order is not one of the criteria but here it is for the sake of organization
     teamsArray.sort((a, b) => {
         // Sort by points
         if (b.points !== a.points) return b.points - a.points;
@@ -293,7 +300,9 @@ function updateLeagueTable() {
         // Add 'top-8' class to the first 8 teams
         if (index < 8) {
             row.classList.add('top-8');
-        } else if (index < 24) {
+        }
+        // Add 'top-24' class to the first 24 teams
+        else if (index < 24) {
             row.classList.add('top-24');
         }
         row.innerHTML = `
@@ -311,6 +320,7 @@ function updateLeagueTable() {
         tableBody.appendChild(row);
     });
 
+    // Update the color scheme because the default is from the Champions League
     updateColorScheme();
 }
 
@@ -320,7 +330,7 @@ function getTeamNames() {
     let teamNames = '';
 
     tableRows.forEach(row => {
-        const teamNameCell = row.querySelector('td:nth-child(3)'); // Adjust the index based on your table structure
+        const teamNameCell = row.querySelector('td:nth-child(3)'); // Thir column is the team name
         if (teamNameCell) {
             teamNames += teamNameCell.textContent.trim() + '\n';
         }
@@ -339,6 +349,7 @@ function copyStandingsToClipboard() {
     });
 }
 
+// Function to show a notification message
 function showNotification(message) {
     const notification = document.getElementById('notification');
     notification.textContent = message;
@@ -404,7 +415,7 @@ function moveFocus(currentInput, direction) {
     }
 }
 
-// Add event listener for the button
+// Add event listener for the copy standings button
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('copy-standings').addEventListener('click', copyStandingsToClipboard);
 
@@ -417,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Add event listener to prevent non-numeric input in score inputs
 document.addEventListener('input', function (event) {
     const input = event.target;
     if (input.classList.contains('score-input')) {
@@ -424,6 +436,7 @@ document.addEventListener('input', function (event) {
     }
 });
 
+// What to do when the window loads
 window.onload = () => {
     // Show loading indicator and hide matches container
     document.getElementById('loading-indicator').style.display = 'block';
