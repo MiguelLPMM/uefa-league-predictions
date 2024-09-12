@@ -39,6 +39,42 @@ h1 {
     height: 100%;
 }
 
+#league-table img {
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+}
+
+/* Specific styles for columns */
+#league-table th:nth-child(1), #league-table td:nth-child(1) {
+    text-align: center; /* Center position */
+}
+
+#league-table th:nth-child(2), #league-table td:nth-child(2) {
+    text-align: left; /* Align logo to the left */
+}
+
+#league-table th:nth-child(3), #league-table td:nth-child(3) {
+    text-align: left; /* Align team names to the left */
+    min-width: 150px; /* Minimum width for team names */
+}
+
+#league-table th:nth-child(n+4), #league-table td:nth-child(n+4) {
+    /* Adjust this range as needed if you add more columns */
+    width: 100px; /* Equal width for text columns */
+    text-align: center; /* Center align text columns */
+}
+
+/* Add styles for the top 8 teams */
+#league-table .top-8 {
+    background-color: #17177a; /* Light blue background for the top 8 teams */
+}
+
+/* Add styles for the teams between 9-24 */
+#league-table .top-24 {
+    background-color: #0a0a61; /* Dark blue background for the teams between 9-24 */
+}
+
 #matches {
     width: 66.67%;
     padding: 20px;

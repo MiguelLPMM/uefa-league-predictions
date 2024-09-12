@@ -16,10 +16,10 @@ async function fetchMatches() {
 
         // Initialize teams in the teamsData object if not already present
         if (!teamsData[homeTeamName]) {
-            teamsData[homeTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {} };
+            teamsData[homeTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: homeTeamLogo };
         }
         if (!teamsData[awayTeamName]) {
-            teamsData[awayTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {} };
+            teamsData[awayTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: awayTeamLogo };
         }
 
         teamsData[homeTeamName].matches[match.id] = { gf: 0, ga: 0 };
@@ -113,22 +113,35 @@ function updateLeagueTable() {
         ...teamsData[teamName]
     }));
 
-    // Sort teams first by points, then by goal difference, and finally by goals for
+    // Sort teams first by points, then by goal difference, then by goals for, and finally alphabetically
     teamsArray.sort((a, b) => {
         // Sort by points
         if (b.points !== a.points) return b.points - a.points;
+        
         // Sort by goal difference (goalsFor - goalsAgainst)
         const goalDifferenceB = b.goalsFor - b.goalsAgainst;
         const goalDifferenceA = a.goalsFor - a.goalsAgainst;
         if (goalDifferenceB !== goalDifferenceA) return goalDifferenceB - goalDifferenceA;
+        
         // Sort by goals for
-        return b.goalsFor - a.goalsFor;
+        if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+        
+        // Sort alphabetically
+        return a.name.localeCompare(b.name);
     });
 
     // Populate the table with sorted teams
-    teamsArray.forEach(team => {
+    teamsArray.forEach((team, index) => {
         const row = document.createElement('tr');
+        // Add 'top-8' class to the first 8 teams
+        if (index < 8) {
+            row.classList.add('top-8');
+        } else if (index < 24) {
+            row.classList.add('top-24');
+        }
         row.innerHTML = `
+            <td>${teamsArray.indexOf(team) + 1}</td> <!-- Position column -->
+            <td><img src="${team.logo}" alt="${team.name} logo" style="width: 30px; height: 30px;"></td> <!-- Logo column -->
             <td>${team.name}</td>
             <td>${team.wins}</td>
             <td>${team.draws}</td>
