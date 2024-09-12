@@ -417,6 +417,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+document.addEventListener('input', function (event) {
+    const input = event.target;
+    if (input.classList.contains('score-input')) {
+        input.value = input.value.replace(/[^0-9]/g, ''); // Only allow digits
+    }
+});
+
 window.onload = () => {
     // Show loading indicator and hide matches container
     document.getElementById('loading-indicator').style.display = 'block';
