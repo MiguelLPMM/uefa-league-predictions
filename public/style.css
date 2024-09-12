@@ -1,3 +1,4 @@
+/* Body */
 body {
     font-family: Arial, sans-serif;
     background-color: #000040; /* Background color of the page */
@@ -9,12 +10,12 @@ body {
     height: 100vh;
 }
   
-  /* Style the scrollbar itself */
-  ::-webkit-scrollbar {
-    width: 0; /* Width of the scrollbar */
-  }  
+/* Scrollbars */
+::-webkit-scrollbar {
+width: 0; /* Width of the scrollbar */
+}  
 
-/* Navbar styles */
+/* Navigation bar */
 nav {
     background-color: #0230f7; /* Navbar background color */
     padding: 1em;
@@ -30,12 +31,21 @@ nav .left, nav .center, nav .right {
     align-items: center;
 }
 
-.left {
+nav .left {
     display: flex;
-    justify-content: flex-start; /* Align the button to the left */
+    justify-content: flex-start;    /* Align the button to the left */
     align-items: center;
 }
 
+nav .center {
+    justify-content: center;        /* Center the h1 */
+}
+
+nav .right {
+    justify-content: flex-end;      /* Align the button to the right */
+}
+
+/* Competition switch buttons */
 .comp-button {
     background: none;
     border: none;
@@ -51,18 +61,12 @@ nav .left, nav .center, nav .right {
     height: 2em; /* Adjust size as needed */
 }
 
-nav .center {
-    justify-content: center; /* Center the h1 */
-}
-
-nav .right {
-    justify-content: flex-end; /* Align the button to the right */
-}
-
+/* Header */
 nav h1 {
     margin: 0;
 }
 
+/* Copy to clipboard button */
 .copy-btn {
     background-color: #0230f7; /* Match the navbar color */
     color: white;
@@ -86,6 +90,7 @@ nav h1 {
     height: calc(100vh - 60px); /* Adjust height based on navbar height */
 }
 
+/* League table */
 #league-table {
     width: 33.33%;
     padding: 20px;
@@ -102,33 +107,36 @@ nav h1 {
 }
 
 /* Specific styles for columns */
+/* Position */
 #league-table th:nth-child(1), #league-table td:nth-child(1) {
     text-align: center; /* Center position */
 }
 
+/* Logo */
 #league-table th:nth-child(2), #league-table td:nth-child(2) {
     text-align: left; /* Align logo to the left */
 }
 
+/* Team name */
 #league-table th:nth-child(3), #league-table td:nth-child(3) {
     text-align: left; /* Align team names to the left */
     min-width: 150px; /* Minimum width for team names */
 }
 
+/* Stats columns */
 #league-table th:nth-child(n+4), #league-table td:nth-child(n+4) {
-    /* Adjust this range as needed if you add more columns */
-    width: 100px; /* Equal width for text columns */
+    width: 100px;       /* Equal width for text columns */
     text-align: center; /* Center align text columns */
 }
 
 /* Add styles for the top 8 teams */
 .top-8 {
-    background-color: #17177a; /* Light blue background for the top 8 teams */
+    background-color: #17177a; /* Light blue background (by default) for the top 8 teams */
 }
 
 /* Add styles for the teams between 9-24 */
 .top-24 {
-    background-color: #0a0a61; /* Dark blue background for the teams between 9-24 */
+    background-color: #0a0a61; /* Dark blue background (by default) for the teams between 9-24 */
 }
 
 /* Container for matchdays */
@@ -172,7 +180,7 @@ nav h1 {
     box-sizing: border-box;
     align-items: center;
     width: 100%;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Optional: Adds shadow for better separation */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
 /* Flex container for home and away */
@@ -192,8 +200,9 @@ nav h1 {
     margin: 0 10px;
 }
 
+/* Score input */
 input[type="number"], input[type="text"] {
-    background-color: #0a0a61;
+    background-color: #0a0a61;  /* Default background color */
     color: white;
     width: 40px;
     height: 40px;
@@ -203,13 +212,12 @@ input[type="number"], input[type="text"] {
     padding: 0;
     border: 2px solid #00eeff;
     border-radius: 5px;
-    -moz-appearance: textfield;
+    -moz-appearance: textfield; /* Remove the up and down arrows from number inputs */
 }
 
+/* Remove the up and down arrows from number inputs */
 input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button,
-input[type="text"]::-webkit-inner-spin-button,
-input[type="text"]::-webkit-outer-spin-button {
+input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
@@ -226,13 +234,13 @@ input[type="text"]::placeholder {
     }
 
     #league-table {
-        width: 100%; /* Full width in portrait mode */
-        order: 2; /* Move league table to the bottom */
+        width: 100%;    /* Full width in portrait mode */
+        order: 1;       /* Keep league table on top */
     }
 
     #matches {
-        width: 100%; /* Full width in portrait mode */
-        order: 1; /* Keep matches on top */
+        width: 100%;    /* Full width in portrait mode */
+        order: 2;       /* Move matches to the bottom */
     }
 
     .matchday .matches {
@@ -240,6 +248,7 @@ input[type="text"]::placeholder {
     }
 }
 
+/* Loading indicator */
 #loading-indicator {
     text-align: center;
     padding: 20px;
@@ -253,18 +262,18 @@ input[type="text"]::placeholder {
     border-radius: 5px;
 }
 
-/* Notification styles */
+/* Notification */
 .notification {
-    display: none; /* Initially hidden */
-    position: fixed; /* Fixed positioning */
-    bottom: 20px; /* Distance from the bottom */
-    left: 50%; /* Center horizontally */
-    transform: translateX(-50%); /* Offset the element by half its width to truly center it */
-    background-color: #0230f7; /* Blue background */
-    color: white; /* White text color */
-    padding: 10px 20px; /* Padding around the text */
-    border-radius: 5px; /* Rounded corners */
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Shadow for better visibility */
-    font-size: 16px; /* Font size */
-    z-index: 1000; /* Ensure it appears above other content */
+    display: none;                              /* Initially hidden */
+    position: fixed;                            /* Fixed positioning */
+    bottom: 20px;
+    left: 50%;                                  /* Center horizontally */
+    transform: translateX(-50%);                /* Offset the element by half its width to truly center it */
+    background-color: #0230f7;                /* Blue background by default */
+    color: white;                             /* White text color */
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    font-size: 16px;
+    z-index: 1000;                              /* Ensure it appears above other content */
 }
