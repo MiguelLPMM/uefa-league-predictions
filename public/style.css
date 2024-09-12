@@ -221,8 +221,18 @@ input[type="text"]::placeholder {
 
 /* Media query for devices where height is larger than width */
 @media (orientation: portrait) {
+    .container {
+        flex-direction: column; /* Stack league table and matches vertically */
+    }
+
+    #league-table {
+        width: 100%; /* Full width in portrait mode */
+        order: 2; /* Move league table to the bottom */
+    }
+
     #matches {
-        width: 100%;
+        width: 100%; /* Full width in portrait mode */
+        order: 1; /* Keep matches on top */
     }
 
     .matchday .matches {
