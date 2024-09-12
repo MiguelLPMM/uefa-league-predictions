@@ -7,7 +7,7 @@ const app = express();
 
 // Middleware to parse JSON data
 app.use(express.json());
-app.use(express.static('docs'));
+app.use(express.static('public'));
 
 // Route to fetch matches from the API
 app.get('/api/matches', async (req, res) => {
