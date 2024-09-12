@@ -76,6 +76,10 @@ async function fetchMatches() {
             homeInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
             awayInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
 
+            // Add keydown event listeners for handling arrow keys
+            homeInput.addEventListener('keydown', handleScoreInputKeydown);
+            awayInput.addEventListener('keydown', handleScoreInputKeydown);
+
             updateTeamStats(match.id, homeTeamName, awayTeamName);
         }
     });
@@ -225,6 +229,55 @@ function showNotification(message) {
     notificationTimeout = setTimeout(() => {
         notification.style.display = 'none';
     }, 3000);
+}
+
+// Function to handle keydown events for score inputs
+function handleScoreInputKeydown(event) {
+    const input = event.target;
+    const key = event.key;
+
+    // Handle Arrow keys only
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
+        const caretPosition = input.selectionStart;
+        const inputValueLength = input.value.length;
+
+        if (key === 'ArrowLeft') {
+            // Move focus to previous input if caret is at the beginning
+            if (caretPosition === 0) {
+                moveFocus(input, -1);
+            }
+        } else if (key === 'ArrowRight') {
+            // Move focus to next input if caret is at the end
+            if (caretPosition === inputValueLength) {
+                moveFocus(input, 1);
+            }
+        } else if (key === 'ArrowUp') {
+            // Move focus to the input above if caret is at the beginning
+            if (caretPosition === 0) {
+                moveFocus(input, -4);
+                event.preventDefault();  // Prevent default behavior
+            }
+        } else if (key === 'ArrowDown') {
+            // Move focus to the input below if caret is at the end
+            if (caretPosition === inputValueLength) {
+                moveFocus(input, 4);
+                event.preventDefault();  // Prevent default behavior
+            }
+        }
+    }
+}
+
+// Function to move focus to the next or previous input
+function moveFocus(currentInput, direction) {
+    // Get all score inputs
+    const scoreInputs = Array.from(document.querySelectorAll('.score-input'));
+    const currentIndex = scoreInputs.indexOf(currentInput);
+    const newIndex = Math.max(0, Math.min(scoreInputs.length - 1, currentIndex + direction));
+
+    // Move focus to the new input
+    if (scoreInputs[newIndex]) {
+        scoreInputs[newIndex].focus();
+    }
 }
 
 // Add event listener for the button
