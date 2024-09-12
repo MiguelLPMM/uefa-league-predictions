@@ -5,6 +5,11 @@ let notificationTimeout; // Variable to store the timeout ID for the notificatio
 
 // Fetch matches from the backend and display them
 async function fetchMatches(comp) {
+    // Show loading indicator and hide matches container
+    document.getElementById('loading-indicator').style.display = 'block';
+    document.getElementById('matches').style.display = 'none';
+    document.getElementById('league-table').style.display = 'none';
+
     teamsData = {}; // Reset teamsData object when fetching new matches
     const response = await fetch('/api/matches/' + comp);
     const matches = await response.json();
@@ -84,6 +89,11 @@ async function fetchMatches(comp) {
             updateTeamStats(match.id, homeTeamName, awayTeamName);
         }
     });
+
+    // Hide loading indicator and show matches container
+    document.getElementById('loading-indicator').style.display = 'none';
+    document.getElementById('matches').style.display = 'block';
+    document.getElementById('league-table').style.display = 'block';
 }
 
 // Function to update team stats based on score input
@@ -294,4 +304,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-window.onload = fetchMatches("ucl");
+window.onload = () => {
+    // Show loading indicator and hide matches container
+    document.getElementById('loading-indicator').style.display = 'block';
+    document.getElementById('matches').style.display = 'none';
+    
+    // Fetch matches for the default competition
+    fetchMatches('ucl');
+};
