@@ -76,21 +76,26 @@ async function fetchMatches(comp) {
         }
 
         if (matchdayDiv) { // Ensure matchdayDiv is defined
+            const homeTeamId = match.homeTeam.id;
+            const awayTeamId = match.awayTeam.id;
             const homeTeamName = match.homeTeam.internationalName;
             const homeTeamLogo = match.homeTeam.logoUrl;
             const awayTeamName = match.awayTeam.internationalName;
             const awayTeamLogo = match.awayTeam.logoUrl;
 
             // Initialize teams in the teamsData object if not already present
-            if (!teamsData[homeTeamName]) {
-                teamsData[homeTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: homeTeamLogo };
+            if (!teamsData[homeTeamId]) {
+                teamsData[homeTeamId] = { name: homeTeamName, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: homeTeamLogo, awayGoals: 0, awayWins: 0, awayMatches: {}, opponents: [], opponentsPoints: 0, opponentsGoalDifference: 0, opponentsGoalsFor: 0 };
             }
-            if (!teamsData[awayTeamName]) {
-                teamsData[awayTeamName] = { wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: awayTeamLogo };
+            if (!teamsData[awayTeamId]) {
+                teamsData[awayTeamId] = { name: awayTeamName, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: awayTeamLogo, awayGoals: 0, awayWins: 0, awayMatches: {}, opponents: [], opponentsPoints: 0, opponentsGoalDifference: 0, opponentsGoalsFor: 0 };
             }
 
-            teamsData[homeTeamName].matches[match.id] = { gf: 0, ga: 0 };
-            teamsData[awayTeamName].matches[match.id] = { gf: 0, ga: 0 };
+            teamsData[homeTeamId].matches[match.id] = { gf: 0, ga: 0 };
+            teamsData[awayTeamId].matches[match.id] = { gf: 0, ga: 0 };
+            teamsData[awayTeamId].awayMatches[match.id] = { gf: 0, ga: 0 };
+            teamsData[homeTeamId].opponents.push(awayTeamId);
+            teamsData[awayTeamId].opponents.push(homeTeamId);
 
             // Create the match element
             const matchDiv = document.createElement('div');
@@ -117,14 +122,14 @@ async function fetchMatches(comp) {
             const awayInput = document.getElementById(`away-${match.id}`);
 
             // Add input event listeners for updating match results
-            homeInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
-            awayInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamName, awayTeamName));
+            homeInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamId, awayTeamId));
+            awayInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamId, awayTeamId));
 
             // Add keydown event listeners for handling arrow keys movement
             homeInput.addEventListener('keydown', handleScoreInputKeydown);
             awayInput.addEventListener('keydown', handleScoreInputKeydown);
 
-            updateTeamStats(match.id, homeTeamName, awayTeamName);
+            updateTeamStats(match.id, homeTeamId, awayTeamId);
         }
     });
 
@@ -210,58 +215,103 @@ function updateColorScheme() {
 }
 
 // Function to update team stats based on score input
-function updateTeamStats(matchId, homeTeamName, awayTeamName) {
+function updateTeamStats(matchId, homeTeamId, awayTeamId) {
     const homeScore = parseInt(document.getElementById(`home-${matchId}`).value) || 0;
     const awayScore = parseInt(document.getElementById(`away-${matchId}`).value) || 0;
 
     // Update match data
-    teamsData[homeTeamName].matches[matchId].gf = homeScore;
-    teamsData[homeTeamName].matches[matchId].ga = awayScore;
-    teamsData[awayTeamName].matches[matchId].gf = awayScore;
-    teamsData[awayTeamName].matches[matchId].ga = homeScore;
+    teamsData[homeTeamId].matches[matchId].gf = homeScore;
+    teamsData[homeTeamId].matches[matchId].ga = awayScore;
+    teamsData[awayTeamId].matches[matchId].gf = awayScore;
+    teamsData[awayTeamId].matches[matchId].ga = homeScore;
+    teamsData[awayTeamId].awayMatches[matchId].gf = awayScore;
+    teamsData[awayTeamId].awayMatches[matchId].ga = homeScore;
 
     // Reset data (will be recalculated below)
-    teamsData[homeTeamName].goalsFor = 0;
-    teamsData[homeTeamName].goalsAgainst = 0;
-    teamsData[homeTeamName].wins = 0;
-    teamsData[homeTeamName].draws = 0;
-    teamsData[homeTeamName].losses = 0;
-    teamsData[awayTeamName].goalsFor = 0;
-    teamsData[awayTeamName].goalsAgainst = 0;
-    teamsData[awayTeamName].wins = 0;
-    teamsData[awayTeamName].draws = 0;
-    teamsData[awayTeamName].losses = 0;
+    teamsData[homeTeamId].goalsFor = 0;
+    teamsData[homeTeamId].goalsAgainst = 0;
+    teamsData[homeTeamId].wins = 0;
+    teamsData[homeTeamId].draws = 0;
+    teamsData[homeTeamId].losses = 0;
+    teamsData[homeTeamId].awayGoals = 0;
+    teamsData[homeTeamId].awayWins = 0;
+    teamsData[awayTeamId].goalsFor = 0;
+    teamsData[awayTeamId].goalsAgainst = 0;
+    teamsData[awayTeamId].wins = 0;
+    teamsData[awayTeamId].draws = 0;
+    teamsData[awayTeamId].losses = 0;
+    teamsData[awayTeamId].awayGoals = 0;
+    teamsData[awayTeamId].awayWins = 0;
 
     // Home team stats
-    for (const homeTeamMatch of Object.values(teamsData[homeTeamName].matches)) {
-        teamsData[homeTeamName].goalsFor += homeTeamMatch.gf;
-        teamsData[homeTeamName].goalsAgainst += homeTeamMatch.ga;
+    for (const homeTeamMatch of Object.values(teamsData[homeTeamId].matches)) {
+        teamsData[homeTeamId].goalsFor += homeTeamMatch.gf;
+        teamsData[homeTeamId].goalsAgainst += homeTeamMatch.ga;
         if (homeTeamMatch.gf > homeTeamMatch.ga) {
-            teamsData[homeTeamName].wins++;
+            teamsData[homeTeamId].wins++;
         } else if (homeTeamMatch.gf < homeTeamMatch.ga) {
-            teamsData[homeTeamName].losses++;
+            teamsData[homeTeamId].losses++;
         } else {
-            teamsData[homeTeamName].draws++;
+            teamsData[homeTeamId].draws++;
         }
     }
-    teamsData[homeTeamName].points = teamsData[homeTeamName].wins * 3 + teamsData[homeTeamName].draws;
+    teamsData[homeTeamId].points = teamsData[homeTeamId].wins * 3 + teamsData[homeTeamId].draws;
+    for (const homeTeamAwayMatch of Object.values(teamsData[homeTeamId].awayMatches)) {
+        teamsData[homeTeamId].awayGoals += homeTeamAwayMatch.gf;
+        if (homeTeamAwayMatch.gf > homeTeamAwayMatch.ga) {
+            teamsData[homeTeamId].awayWins++;
+        }
+    }
 
     // Away team stats
-    for (const awayTeamMatch of Object.values(teamsData[awayTeamName].matches)) {
-        teamsData[awayTeamName].goalsFor += awayTeamMatch.gf;
-        teamsData[awayTeamName].goalsAgainst += awayTeamMatch.ga;
+    for (const awayTeamMatch of Object.values(teamsData[awayTeamId].matches)) {
+        teamsData[awayTeamId].goalsFor += awayTeamMatch.gf;
+        teamsData[awayTeamId].goalsAgainst += awayTeamMatch.ga;
         if (awayTeamMatch.gf > awayTeamMatch.ga) {
-            teamsData[awayTeamName].wins++;
+            teamsData[awayTeamId].wins++;
         } else if (awayTeamMatch.gf < awayTeamMatch.ga) {
-            teamsData[awayTeamName].losses++;
+            teamsData[awayTeamId].losses++;
         } else {
-            teamsData[awayTeamName].draws++;
+            teamsData[awayTeamId].draws++;
         }
     }
-    teamsData[awayTeamName].points = teamsData[awayTeamName].wins * 3 + teamsData[awayTeamName].draws;
+    teamsData[awayTeamId].points = teamsData[awayTeamId].wins * 3 + teamsData[awayTeamId].draws;
+    for (const awayTeamAwayMatch of Object.values(teamsData[awayTeamId].awayMatches)) {
+        teamsData[awayTeamId].awayGoals += awayTeamAwayMatch.gf;
+        if (awayTeamAwayMatch.gf > awayTeamAwayMatch.ga) {
+            teamsData[awayTeamId].awayWins++;
+        }
+    }
+
+    // Update opponents data for other teams
+    updateOpponentsDataAgainst(homeTeamId);
+    updateOpponentsDataAgainst(awayTeamId);
 
     // Update the league table display
     updateLeagueTable();
+}
+
+// Function to update opponents data for the teams that play against said team
+function updateOpponentsDataAgainst(teamId) {
+    const opponents = teamsData[teamId].opponents;
+    opponents.forEach(opponentId => {
+        updateOpponentsData(opponentId);
+    });
+}
+
+// Function to update opponents data for a team
+function updateOpponentsData(teamId) {
+    const team = teamsData[teamId];
+    team.opponentsPoints = 0;
+    team.opponentsGoalDifference = 0;
+    team.opponentsGoalsFor = 0;
+
+    team.opponents.forEach(opponentId => {
+        const opponent = teamsData[opponentId];
+        team.opponentsPoints += opponent.points;
+        team.opponentsGoalDifference += opponent.goalsFor - opponent.goalsAgainst;
+        team.opponentsGoalsFor += opponent.goalsFor;
+    });
 }
 
 // Function to update the league table display
@@ -270,13 +320,14 @@ function updateLeagueTable() {
     tableBody.innerHTML = '';  // Clear current table
 
     // Convert teamsData object to an array for sorting
-    const teamsArray = Object.keys(teamsData).map(teamName => ({
-        name: teamName,
-        ...teamsData[teamName]
+    const teamsArray = Object.keys(teamsData).map(teamId => ({
+        name: teamsData[teamId].name,
+        ...teamsData[teamId]
     }));
 
-    // Sort teams first by points, then by goal difference, then by goals for, and finally alphabetically
-    // Yes, there are other criteria but they are not incapsulated in this site
+    console.log(teamsArray);
+
+    // Sort teams according to "Article 18 Equality of points – league phase" of the regulations of the UEFA Champions League
     // And yes, alphabetical order is not one of the criteria but here it is for the sake of organization
     teamsArray.sort((a, b) => {
         // Sort by points
@@ -287,8 +338,30 @@ function updateLeagueTable() {
         const goalDifferenceA = a.goalsFor - a.goalsAgainst;
         if (goalDifferenceB !== goalDifferenceA) return goalDifferenceB - goalDifferenceA;
         
-        // Sort by goals for
+        // Sort by goals scored
         if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+
+        // Sort by away goals 
+        if (b.awayGoals !== a.awayGoals) return b.awayGoals - a.awayGoals;
+
+        // Sort by wins
+        if (b.wins !== a.wins) return b.wins - a.wins;
+
+        // Sort by away wins
+        if (b.awayWins !== a.awayWins) return b.awayWins - a.awayWins;
+
+        // Sort by opponents points
+        if (b.opponentsPoints !== a.opponentsPoints) return b.opponentsPoints - a.opponentsPoints;
+
+        // Sort by opponents goal difference
+        if (b.opponentsGoalDifference !== a.opponentsGoalDifference) return b.opponentsGoalDifference - a.opponentsGoalDifference;
+
+        // Sort by opponents goals for
+        if (b.opponentsGoalsFor !== a.opponentsGoalsFor) return b.opponentsGoalsFor - a.opponentsGoalsFor;
+
+        // Here would be the sort by disciplinary points (lower is better)
+
+        // Here would be the sort by coefficient
         
         // Sort alphabetically
         return a.name.localeCompare(b.name);
@@ -330,7 +403,7 @@ function getTeamNames() {
     let teamNames = '';
 
     tableRows.forEach(row => {
-        const teamNameCell = row.querySelector('td:nth-child(3)'); // Thir column is the team name
+        const teamNameCell = row.querySelector('td:nth-child(3)'); // Third column is the team name
         if (teamNameCell) {
             teamNames += teamNameCell.textContent.trim() + '\n';
         }
