@@ -12,6 +12,7 @@ const colorSchemes = {
         top8: '#17177a',
         match: '#0a0a61',       // comp/copy button hover, top 24, input background
         score: '#00eeff',
+        finished: '#606098',
         icon: 'assets/ucl.ico',
         name: 'Champions'
     },
@@ -21,6 +22,7 @@ const colorSchemes = {
         top8: '#3a3a3c',
         match: '#1c1c1e',
         score: '#ff6900',
+        finished: '#555556',
         icon: 'assets/uel.ico',
         name: 'Europa'
     },
@@ -30,6 +32,7 @@ const colorSchemes = {
         top8: '#3a3a3c',
         match: '#1c1c1e',
         score: '#00be14',
+        finished: '#555556',
         icon: 'assets/uecl.ico',
         name: 'Conference'
     }
@@ -91,9 +94,26 @@ async function fetchMatches(comp) {
                 teamsData[awayTeamId] = { name: awayTeamName, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: awayTeamLogo, awayGoals: 0, awayWins: 0, awayMatches: {}, opponents: [], opponentsPoints: 0, opponentsGoalDifference: 0, opponentsGoalsFor: 0 };
             }
 
-            teamsData[homeTeamId].matches[match.id] = { gf: 0, ga: 0 };
-            teamsData[awayTeamId].matches[match.id] = { gf: 0, ga: 0 };
-            teamsData[awayTeamId].awayMatches[match.id] = { gf: 0, ga: 0 };
+            let homeGoals = 0;
+            let awayGoals = 0;
+            let disabled = '';
+            let homeResult = 'placeholder="0"';
+            let awayResult = 'placeholder="0"';
+            let inputClass = 'score-input';
+
+            // Check if match has happened
+            if (match.status === 'FINISHED') {
+                homeGoals = match.score.total.home;
+                awayGoals = match.score.total.away;
+                disabled = 'disabled';
+                homeResult = `value="${homeGoals}"`;
+                awayResult = `value="${awayGoals}"`;
+                inputClass = 'score-input-finished';
+            }
+
+            teamsData[homeTeamId].matches[match.id] = { gf: homeGoals, ga: awayGoals };
+            teamsData[awayTeamId].matches[match.id] = { gf: homeGoals, ga: awayGoals };
+            teamsData[awayTeamId].awayMatches[match.id] = { gf: homeGoals, ga: awayGoals };
             teamsData[homeTeamId].opponents.push(awayTeamId);
             teamsData[awayTeamId].opponents.push(homeTeamId);
 
@@ -105,10 +125,10 @@ async function fetchMatches(comp) {
                 <div class="home">
                     <img src="${homeTeamLogo}" alt="${homeTeamName} logo">
                     <span>${homeTeamName}</span>
-                    <input type="text" pattern="\\d*" id="home-${match.id}" class="score-input" placeholder="0" maxlength="2" />
+                    <input type="text" pattern="\\d*" id="home-${match.id}" class="${inputClass}" ${disabled} ${homeResult} maxlength="2" />
                 </div>
                 <div class="away">
-                    <input type="text" pattern="\\d*" id="away-${match.id}" class="score-input" placeholder="0" maxlength="2" />
+                    <input type="text" pattern="\\d*" id="away-${match.id}" class="${inputClass}" ${disabled} ${awayResult} maxlength="2" />
                     <span>${awayTeamName}</span>
                     <img src="${awayTeamLogo}" alt="${awayTeamName} logo">
                 </div>
@@ -173,6 +193,12 @@ function updateColorScheme() {
     scoreInputs.forEach(input => {
         input.style.backgroundColor = colors.match;
         input.style.borderColor = colors.score;
+    });
+
+    // Apply color scheme to score inputs from finished matches
+    const finishedScoreInputs = document.querySelectorAll('.score-input-finished');
+    finishedScoreInputs.forEach(input => {
+        input.style.borderColor = colors.finished;
     });
 
     // Apply color scheme to competition buttons
@@ -324,8 +350,6 @@ function updateLeagueTable() {
         name: teamsData[teamId].name,
         ...teamsData[teamId]
     }));
-
-    console.log(teamsArray);
 
     // Sort teams according to "Article 18 Equality of points – league phase" of the regulations of the UEFA Champions League
     // And yes, alphabetical order is not one of the criteria but here it is for the sake of organization

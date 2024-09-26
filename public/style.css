@@ -216,6 +216,10 @@ input[type="number"], input[type="text"] {
     appearance: textfield;      /* Define the standard property 'appearance' for compatibility */
 }
 
+input[type="number"].score-input-finished, input[type="text"].score-input-finished {
+    border: 2px solid #606098; /* Gray border for finished matches */
+}
+
 /* Remove the up and down arrows from number inputs */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
