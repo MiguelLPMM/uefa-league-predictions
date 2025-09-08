@@ -20,7 +20,7 @@ app.get('/api/matches/ucl', async (req, res) => {
         const matches = await getMatches({
             competitionId: 1,  // UEFA Champions League
             seasonYear: seasonYear,
-        }, 'ASC', 234);
+        }, 'ASC', 238);
         // Filter out matches based on type and round
         const groupStageMatches = matches.filter(match =>
             match.type === 'GROUP_STAGE'
