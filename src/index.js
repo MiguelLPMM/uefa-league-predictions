@@ -9,12 +9,17 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
+// Season variable updating each September
+const currentDate = new Date();
+const currentYear = currentDate.getFullYear();
+const seasonYear = currentDate.getMonth() >= 8 ? currentYear + 1 : currentYear;
+
 // Routes to fetch matches from the API
 app.get('/api/matches/ucl', async (req, res) => {
     try {
         const matches = await getMatches({
             competitionId: 1,  // UEFA Champions League
-            seasonYear: 2025,
+            seasonYear: seasonYear,
         }, 'ASC', 234);
         // Filter out matches based on type and round
         const groupStageMatches = matches.filter(match =>
@@ -31,7 +36,7 @@ app.get('/api/matches/uel', async (req, res) => {
     try {
         const matches = await getMatches({
             competitionId: 14,  // UEFA Europa League
-            seasonYear: 2025,
+            seasonYear: seasonYear,
         }, 'ASC', 234);
         // Filter out matches based on type and round
         const groupStageMatches = matches.filter(match =>
@@ -48,7 +53,7 @@ app.get('/api/matches/uecl', async (req, res) => {
     try {
         const matches = await getMatches({
             competitionId: 2019,  // UEFA Champions League
-            seasonYear: 2025,
+            seasonYear: seasonYear,
         }, 'ASC', 364);
         // Filter out matches based on type and round
         const groupStageMatches = matches.filter(match =>
