@@ -15,7 +15,7 @@ The designed of the prediction part is based on the official UEFA predictor for 
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v14.x or higher)
+- [Node.js](https://nodejs.org/) (v20.x or higher)
 - NPM (Comes with Node.js)
 
 ### Installation
@@ -33,7 +33,7 @@ The designed of the prediction part is based on the official UEFA predictor for 
 
 3. Run the app:
     ```bash
-    node index.js
+    npm run dev
     ```
 
 4. Open the browser and go to `http://localhost:3000`.

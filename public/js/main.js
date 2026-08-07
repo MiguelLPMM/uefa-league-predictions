@@ -538,7 +538,11 @@ window.onload = () => {
     // Show loading indicator and hide matches container
     document.getElementById('loading-indicator').style.display = 'block';
     document.getElementById('matches').style.display = 'none';
-    
+
     // Fetch matches for the default competition
     fetchMatches('ucl');
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js');
+    }
 };
