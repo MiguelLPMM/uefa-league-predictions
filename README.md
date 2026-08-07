@@ -1,7 +1,7 @@
 # UEFA League Predictions
 
 This is a Node.js web application that allows users to view upcoming UEFA competition matches (Champions League, Europa League, and Conference League), make score predictions, and generate a dynamically updated league table based on user inputs.  
-It can be accessed at https://uefa-league-prediction.onrender.com/.
+It can be accessed at https://uefa-league-predictions.vercel.app/.
 
 ## API
 
