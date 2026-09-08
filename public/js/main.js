@@ -38,6 +38,37 @@ const colorSchemes = {
     }
 };
 
+// Functions to persist and restore predictions in localStorage, keyed per competition
+function getPredictionsStorageKey(comp) {
+    return `predictions_${comp}`;
+}
+
+function loadPredictions(comp) {
+    try {
+        const raw = localStorage.getItem(getPredictionsStorageKey(comp));
+        return raw ? JSON.parse(raw) : {};
+    } catch (err) {
+        console.error('Failed to load saved predictions:', err);
+        return {};
+    }
+}
+
+function savePrediction(comp, matchId, homeScore, awayScore) {
+    try {
+        homeScore = homeScore.replace(/[^0-9]/g, '');
+        awayScore = awayScore.replace(/[^0-9]/g, '');
+        const predictions = loadPredictions(comp);
+        if (homeScore === '' && awayScore === '') {
+            delete predictions[matchId];
+        } else {
+            predictions[matchId] = { home: homeScore, away: awayScore };
+        }
+        localStorage.setItem(getPredictionsStorageKey(comp), JSON.stringify(predictions));
+    } catch (err) {
+        console.error('Failed to save prediction:', err);
+    }
+}
+
 // Fetch matches from the backend and display them
 async function fetchMatches(comp) {
     // Show loading indicator and hide matches container
@@ -50,6 +81,7 @@ async function fetchMatches(comp) {
     updateColorScheme(); // Update the color scheme based on the competition
 
     teamsData = {}; // Reset teamsData object when fetching new matches
+    const savedPredictions = loadPredictions(comp); // Restore any previously saved predictions
     const response = await fetch('/api/matches/' + comp);
     const matches = await response.json();
     const matchesDiv = document.getElementById('matches');
@@ -109,6 +141,13 @@ async function fetchMatches(comp) {
                 homeResult = `value="${homeGoals}"`;
                 awayResult = `value="${awayGoals}"`;
                 inputClass = 'score-input-finished';
+            } else {
+                // Restore a saved prediction for this match, if one exists
+                const saved = savedPredictions[match.id];
+                if (saved) {
+                    homeResult = `value="${saved.home}"`;
+                    awayResult = `value="${saved.away}"`;
+                }
             }
 
             teamsData[homeTeamId].matches[match.id] = { gf: homeGoals, ga: awayGoals };
@@ -141,9 +180,15 @@ async function fetchMatches(comp) {
             const homeInput = document.getElementById(`home-${match.id}`);
             const awayInput = document.getElementById(`away-${match.id}`);
 
-            // Add input event listeners for updating match results
-            homeInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamId, awayTeamId));
-            awayInput.addEventListener('input', () => updateTeamStats(match.id, homeTeamId, awayTeamId));
+            // Add input event listeners for updating match results and saving predictions
+            homeInput.addEventListener('input', () => {
+                updateTeamStats(match.id, homeTeamId, awayTeamId);
+                savePrediction(comp, match.id, homeInput.value, awayInput.value);
+            });
+            awayInput.addEventListener('input', () => {
+                updateTeamStats(match.id, homeTeamId, awayTeamId);
+                savePrediction(comp, match.id, homeInput.value, awayInput.value);
+            });
 
             // Add keydown event listeners for handling arrow keys movement
             homeInput.addEventListener('keydown', handleScoreInputKeydown);

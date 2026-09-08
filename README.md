@@ -33,7 +33,7 @@ The designed of the prediction part is based on the official UEFA predictor for 
 
 3. Run the app:
     ```bash
-    npm run dev
+    npm start
     ```
 
 4. Open the browser and go to `http://localhost:3000`.
