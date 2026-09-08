@@ -43,6 +43,7 @@ nav .center {
 
 nav .right {
     justify-content: flex-end;      /* Align the button to the right */
+    gap: 0.5em;                     /* Space between the buttons */
 }
 
 /* Competition switch buttons */

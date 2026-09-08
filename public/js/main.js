@@ -268,6 +268,16 @@ function updateColorScheme() {
         copyStandingsButton.style.backgroundColor = colors.nav;
     });
 
+    // Apply color scheme to clear predictions button
+    const clearPredictionsButton = document.getElementById('clear-predictions');
+    clearPredictionsButton.style.backgroundColor = colors.nav;
+    clearPredictionsButton.addEventListener('mouseover', () => {
+        clearPredictionsButton.style.backgroundColor = colors.match;
+    });
+    clearPredictionsButton.addEventListener('mouseout', () => {
+        clearPredictionsButton.style.backgroundColor = colors.nav;
+    });
+
     // Apply color scheme to notification
     const notification = document.getElementById('notification');
     notification.style.backgroundColor = colors.nav;
@@ -491,6 +501,17 @@ function copyStandingsToClipboard() {
     });
 }
 
+// Function to clear all saved predictions for the current competition and restart it
+function clearPredictions() {
+    const confirmed = confirm('Clear all your predictions for this competition? This cannot be undone.');
+    if (!confirmed) {
+        return;
+    }
+    localStorage.removeItem(getPredictionsStorageKey(currentComp));
+    fetchMatches(currentComp);
+    showNotification('Predictions cleared!');
+}
+
 // Function to show a notification message
 function showNotification(message) {
     const notification = document.getElementById('notification');
@@ -560,6 +581,7 @@ function moveFocus(currentInput, direction) {
 // Add event listener for the copy standings button
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('copy-standings').addEventListener('click', copyStandingsToClipboard);
+    document.getElementById('clear-predictions').addEventListener('click', clearPredictions);
 
     const compButtons = document.querySelectorAll('.comp-button');
     compButtons.forEach(button => {
