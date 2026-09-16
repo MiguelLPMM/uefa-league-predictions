@@ -13,9 +13,22 @@
     "uefa-api": "^1.0.2"
   },
   "devDependencies": {
-    "vercel": "^58.7.1"
+    "vercel": "^59.19.0"
   },
   "engines": {
     "node": "24.x"
+  },
+  "allowScripts": {
+    "esbuild@0.27.0": true
+  },
+  "overrides": {
+    "tar": "7.5.22",
+    "undici": "8.10.2",
+    "path-to-regexp": "8.4.2",
+    "ajv": "8.20.0",
+    "js-yaml": "4.3.2",
+    "minimatch": "10.2.6",
+    "smol-toml": "1.8.0",
+    "@tootallnate/once": "3.0.1"
   }
 }

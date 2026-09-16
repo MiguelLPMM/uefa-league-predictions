@@ -33,7 +33,7 @@
             </button>
         </div>
         <div class="center">
-            <h1 id="header">UEFA League Predictions</h1>
+            <h1 id="header"><span class="title-part1">UEFA Champions</span> <span class="title-part2">League Predictions</span></h1>
         </div>
         <div class="right">
             <button id="clear-predictions" class="copy-btn">
@@ -45,26 +45,33 @@
         </div>
     </nav>
     <div class="container">
-        <div id="league-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th></th> <!-- Position -->
-                        <th></th> <!-- Logo -->
-                        <th></th> <!-- Team Name -->
-                        <th>W</th>
-                        <th>D</th>
-                        <th>L</th>
-                        <th>GF</th>
-                        <th>GA</th>
-                        <th>GD</th>
-                        <th>Points</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- League table will be dynamically updated here -->
-                </tbody>
-            </table>
+        <div id="table-panel">
+            <div class="panel-header">
+                <button id="toggle-table" class="panel-toggle" title="Collapse standings" aria-expanded="true" aria-label="Collapse standings">
+                    <i class="material-icons">chevron_left</i>
+                </button>
+            </div>
+            <div id="league-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th></th> <!-- Position -->
+                            <th></th> <!-- Logo -->
+                            <th></th> <!-- Team Name -->
+                            <th>W</th>
+                            <th>D</th>
+                            <th>L</th>
+                            <th>GF</th>
+                            <th>GA</th>
+                            <th>GD</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- League table will be dynamically updated here -->
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div id="matches">

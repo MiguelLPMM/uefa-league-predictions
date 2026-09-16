@@ -286,9 +286,18 @@ function updateColorScheme() {
     const favicon = document.querySelector('link[rel="icon"]');
     favicon.href = colors.icon;
 
-    // Update the header
+    // Update the header (split across two spans so mobile can force an even
+    // "UEFA <Competition>" / "League Predictions" line break instead of
+    // wrapping wherever the text happens to run out of room)
     const header = document.getElementById('header');
-    header.textContent = `UEFA ${colors.name} League Predictions`;
+    header.innerHTML = '';
+    const titlePart1 = document.createElement('span');
+    titlePart1.className = 'title-part1';
+    titlePart1.textContent = `UEFA ${colors.name}`;
+    const titlePart2 = document.createElement('span');
+    titlePart2.className = 'title-part2';
+    titlePart2.textContent = 'League Predictions';
+    header.append(titlePart1, ' ', titlePart2);
 
     // Update the title
     document.title = `UEFA ${colors.name} League Predictions`;
@@ -590,7 +599,42 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchMatches(arg);
         });
     });
+
+    setupTablePanelToggle();
 });
+
+// Lets the user collapse the standings panel so the predictions area can use the freed-up space
+function setupTablePanelToggle() {
+    const container = document.querySelector('.container');
+    const toggleButton = document.getElementById('toggle-table');
+    const storageKey = 'tablePanelCollapsed';
+
+    const applyState = (collapsed) => {
+        container.classList.toggle('table-collapsed', collapsed);
+        toggleButton.setAttribute('aria-expanded', String(!collapsed));
+        const label = collapsed ? 'Expand standings' : 'Collapse standings';
+        toggleButton.title = label;
+        toggleButton.setAttribute('aria-label', label);
+    };
+
+    let collapsed = false;
+    try {
+        collapsed = localStorage.getItem(storageKey) === 'true';
+    } catch (err) {
+        console.error('Failed to read table panel state:', err);
+    }
+    applyState(collapsed);
+
+    toggleButton.addEventListener('click', () => {
+        collapsed = !collapsed;
+        applyState(collapsed);
+        try {
+            localStorage.setItem(storageKey, String(collapsed));
+        } catch (err) {
+            console.error('Failed to save table panel state:', err);
+        }
+    });
+}
 
 // Add event listener to prevent non-numeric input in score inputs
 document.addEventListener('input', function (event) {
