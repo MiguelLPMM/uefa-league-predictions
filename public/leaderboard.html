@@ -65,8 +65,16 @@
         </div>
     </aside>
     <div class="container">
-        <div id="leaderboard-placeholder" class="page-placeholder">
-            <p>Leaderboard views are coming in a later phase.</p>
+        <div id="leaderboard-gate" class="page-placeholder" hidden>
+            <p id="leaderboard-gate-message"></p>
+        </div>
+        <div id="leaderboard-content" class="leaderboard-content" hidden>
+            <div class="leaderboard-view-switcher">
+                <button class="view-tab" data-view="live">Live Ranking</button>
+                <button class="view-tab" data-view="table">Actual Table</button>
+            </div>
+            <div id="leaderboard-live" class="leaderboard-view"></div>
+            <div id="leaderboard-table" class="leaderboard-view" hidden></div>
         </div>
     </div>
     <div id="notification" class="notification"></div>
