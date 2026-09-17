@@ -593,12 +593,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save/Load only make sense once signed in - hide them otherwise, and
     // re-check the late-entry notice whenever sign-in state changes (e.g.
     // signing in while already on this page), not just on initial load.
+    // Must compare user ids, not just react to every call - Supabase also
+    // fires this on a plain token refresh (notably when the tab regains
+    // focus after being backgrounded), which isn't a real sign-in/out and
+    // would otherwise re-run checkLateEntry()'s network calls every time.
+    let previousUserId; // undefined = unknown yet, distinct from null = signed out
     onAuthStateChange((user) => {
+        const currentUserId = user ? user.id : null;
+        const isRealTransition = previousUserId !== undefined && currentUserId !== previousUserId;
+        previousUserId = currentUserId;
+
         const loadButton = document.getElementById('load-predictions');
         const saveButton = document.getElementById('save-predictions');
         if (loadButton) loadButton.hidden = !user;
         if (saveButton) saveButton.hidden = !user;
-        checkLateEntry();
+
+        if (isRealTransition) checkLateEntry();
     });
 });
 

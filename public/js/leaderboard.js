@@ -6,13 +6,27 @@ import { applySharedTheme, getColors } from './theme.js';
 import { syncUrlToSelectedComp, wireCompButtons } from './compSelector.js';
 import { setupNav } from './nav.js';
 import { getCurrentUser, onAuthStateChange } from './auth.js';
-import { getCurrentCompetitionSeason, getMatchesCache, getEntriesWithProfiles, getAllPredictions } from './api/leaderboard.js';
+import {
+    getCurrentCompetitionSeason,
+    getCompetitionSeasonByYear,
+    listCompetitionSeasons,
+    getMatchesCache,
+    getEntriesWithProfiles,
+    getAllPredictions,
+    getFixedRankPredictionsByEntry,
+    getSeasonActualStandings,
+} from './api/leaderboard.js';
 import { getFavoriteUserIds, addFavorite, removeFavorite } from './api/favorites.js';
 import { computeActualStandings, computeUserPredictedStandings, computeOffsets } from './scoring.js';
 import { setupDrilldownModal, openDrilldown } from './drilldown.js';
 
 const VIEW_STORAGE_KEY = 'leaderboardView';
 const VALID_VIEWS = ['live', 'table', 'breakdown'];
+
+// The competition currently selected via the nav buttons - tracked so the
+// season-select and auth-change handlers (which don't otherwise know it) can
+// re-run loadLeaderboard for the right competition.
+let currentComp = null;
 
 // Everything needed to re-render (or re-order) the current competition's
 // leaderboard without another network round-trip - populated by
@@ -52,11 +66,14 @@ function showGate(message) {
 // Self first (if signed in and has an entry), then favorited users in
 // submission-time order, then everyone else in submission-time order.
 // `results` must already be in submission-time order (see getEntriesWithProfiles).
+// Guest entries have user_id = null, same as a signed-out visitor's
+// currentUserId - guard explicitly so those never get treated as "self".
 function buildColumnOrder(results, currentUserId, favoriteIds) {
     const favoriteSet = new Set(favoriteIds);
-    const self = results.filter((r) => r.entry.user_id === currentUserId);
-    const favorites = results.filter((r) => r.entry.user_id !== currentUserId && favoriteSet.has(r.entry.user_id));
-    const rest = results.filter((r) => r.entry.user_id !== currentUserId && !favoriteSet.has(r.entry.user_id));
+    const isSelf = (r) => currentUserId != null && r.entry.user_id === currentUserId;
+    const self = results.filter(isSelf);
+    const favorites = results.filter((r) => !isSelf(r) && favoriteSet.has(r.entry.user_id));
+    const rest = results.filter((r) => !isSelf(r) && !favoriteSet.has(r.entry.user_id));
     return [...self, ...favorites, ...rest];
 }
 
@@ -83,7 +100,7 @@ function buildUserChip(result, { withAvatar }) {
         chip.appendChild(avatar);
     }
 
-    const isSelf = session && result.entry.user_id === session.currentUserId;
+    const isSelf = Boolean(session && session.currentUserId != null && result.entry.user_id === session.currentUserId);
     const name = document.createElement('span');
     name.className = 'leaderboard-name';
     name.textContent = result.entry.displayName;
@@ -116,8 +133,12 @@ function buildUserChip(result, { withAvatar }) {
 
 function openDrilldownForResult(result) {
     if (!session) return;
-    const predictionsForUser = session.predictionsByUser.get(result.entry.user_id) || new Map();
-    openDrilldown(result.entry, session.matchesCache, predictionsForUser, result.predictedStandings, session.actualRankByTeamId, session.colors);
+    // A fixed-rank entry (historical/guest import) only ever has a final
+    // ranking on record, never match-by-match picks - the drill-down for
+    // those shows just the predicted table, nothing else.
+    const isFixedRank = result.entry.entry_mode === 'fixed_rank';
+    const predictionsForUser = isFixedRank ? new Map() : (session.predictionsByUser.get(result.entry.user_id) || new Map());
+    openDrilldown(result.entry, session.matchesCache, predictionsForUser, result.predictedStandings, session.actualRankByTeamId, session.colors, { hideMatches: isFixedRank });
 }
 
 async function toggleFavorite(favoriteUserId, shouldAdd) {
@@ -176,16 +197,15 @@ function renderTableView(actualStandings, columnOrderedResults, colors) {
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
 
-    const cornerRank = document.createElement('th');
-    cornerRank.className = 'frozen-col';
-    cornerRank.style.backgroundColor = colors.nav;
-    headRow.appendChild(cornerRank);
-
-    const cornerTeam = document.createElement('th');
-    cornerTeam.className = 'frozen-col team-col';
-    cornerTeam.textContent = 'Team';
-    cornerTeam.style.backgroundColor = colors.nav;
-    headRow.appendChild(cornerTeam);
+    // Rank + team used to be two adjacent sticky-left columns that had to
+    // land at exactly the right offset from each other - one column means
+    // there's no second offset to get right in the first place, which is
+    // what actually eliminates the gap that kept showing up between them
+    // (rather than yet another attempt to compute the "correct" offset).
+    const corner = document.createElement('th');
+    corner.className = 'frozen-col';
+    corner.style.backgroundColor = colors.nav;
+    headRow.appendChild(corner);
 
     columnOrderedResults.forEach((result) => {
         const th = document.createElement('th');
@@ -202,21 +222,33 @@ function renderTableView(actualStandings, columnOrderedResults, colors) {
         const tierColor = team.rank <= 8 ? colors.top8 : team.rank <= 24 ? colors.match : colors.background;
         const tr = document.createElement('tr');
 
-        const rankCell = document.createElement('td');
-        rankCell.className = 'frozen-col';
-        rankCell.textContent = String(team.rank);
-        rankCell.style.backgroundColor = tierColor;
-        tr.appendChild(rankCell);
-
         const teamCell = document.createElement('td');
-        teamCell.className = 'frozen-col team-col';
+        teamCell.className = 'frozen-col';
         teamCell.style.backgroundColor = tierColor;
-        const logo = document.createElement('img');
-        logo.src = team.logo;
-        logo.alt = '';
+
+        // The inner flex wrapper is what lays out rank+logo+name - never
+        // the <td> itself (overriding a table cell's own `display` away
+        // from table-cell makes it escape normal row layout entirely).
+        const inner = document.createElement('span');
+        inner.className = 'frozen-team-inner';
+
+        const rank = document.createElement('span');
+        rank.className = 'frozen-rank';
+        rank.textContent = String(team.rank);
+        inner.appendChild(rank);
+
+        if (team.logo) {
+            const logo = document.createElement('img');
+            logo.src = team.logo;
+            logo.alt = '';
+            inner.appendChild(logo);
+        }
         const name = document.createElement('span');
+        name.className = 'frozen-team-name';
         name.textContent = team.name;
-        teamCell.append(logo, name);
+        inner.appendChild(name);
+
+        teamCell.appendChild(inner);
         tr.appendChild(teamCell);
 
         columnOrderedResults.forEach((result) => {
@@ -289,15 +321,26 @@ function renderBreakdownView(columnOrderedResults, actualRankByTeamId, colors) {
             if (!team) {
                 cell.textContent = '—';
             } else {
+                // The grid layout (team column vs. off column) has to live on
+                // an inner wrapper, not the <td> itself - overriding a table
+                // cell's own `display` away from table-cell makes it escape
+                // normal row layout entirely (cells stack instead of sitting
+                // side by side).
+                const inner = document.createElement('div');
+                inner.className = 'breakdown-cell-inner';
+
                 const teamWrap = document.createElement('span');
                 teamWrap.className = 'breakdown-team';
-                const logo = document.createElement('img');
-                logo.src = team.logo;
-                logo.alt = '';
+                if (team.logo) {
+                    const logo = document.createElement('img');
+                    logo.src = team.logo;
+                    logo.alt = '';
+                    teamWrap.appendChild(logo);
+                }
                 const name = document.createElement('span');
                 name.textContent = team.name;
-                teamWrap.append(logo, name);
-                cell.appendChild(teamWrap);
+                teamWrap.appendChild(name);
+                inner.appendChild(teamWrap);
 
                 const actualRank = actualRankByTeamId.get(team.id);
                 const off = document.createElement('span');
@@ -309,7 +352,9 @@ function renderBreakdownView(columnOrderedResults, actualRankByTeamId, colors) {
                     off.textContent = value > 0 ? `+${value}` : String(value);
                     if (value === 0) off.classList.add('off-bangon');
                 }
-                cell.appendChild(off);
+                inner.appendChild(off);
+
+                cell.appendChild(inner);
             }
 
             tr.appendChild(cell);
@@ -350,38 +395,91 @@ function renderAll() {
     renderBreakdownView(columnOrder, actualRankByTeamId, colors);
 }
 
-async function loadLeaderboard(comp) {
+// competition_seasons.season_year follows the same convention as seasons.label
+// (e.g. 2027 -> "2026/27") - computed here instead of a second query for it.
+function seasonLabel(seasonYear) {
+    return `${seasonYear - 1}/${String(seasonYear).slice(-2)}`;
+}
+
+// The season selector is intentionally rendered outside/above the gate: even
+// while the *current* season is still locked, past concluded seasons should
+// stay browsable. Only repopulates the option list; selecting one re-runs
+// loadLeaderboard for that specific year (wired once in DOMContentLoaded).
+async function populateSeasonSelector(comp, selectedSeasonYear) {
+    const bar = document.getElementById('leaderboard-season-bar');
+    const select = document.getElementById('season-select');
+    try {
+        const seasons = await listCompetitionSeasons(comp);
+        if (seasons.length === 0) {
+            bar.hidden = true;
+            return;
+        }
+        select.innerHTML = '';
+        seasons.forEach((season) => {
+            const option = document.createElement('option');
+            option.value = String(season.season_year);
+            option.textContent = seasonLabel(season.season_year);
+            select.appendChild(option);
+        });
+        select.value = String(selectedSeasonYear);
+        bar.hidden = false;
+    } catch (err) {
+        console.error('Failed to load season list:', err);
+        bar.hidden = true;
+    }
+}
+
+async function loadLeaderboard(comp, seasonYear) {
+    currentComp = comp;
     session = null;
     document.getElementById('leaderboard-gate').hidden = true;
     document.getElementById('leaderboard-content').hidden = true;
 
     let compSeason;
     try {
-        compSeason = await getCurrentCompetitionSeason(comp);
+        compSeason = seasonYear != null
+            ? await getCompetitionSeasonByYear(comp, seasonYear)
+            : await getCurrentCompetitionSeason(comp);
     } catch (err) {
         console.error('Failed to load competition season:', err);
         showGate('Failed to load the leaderboard — please try again later.');
         return;
     }
 
-    if (!compSeason || !compSeason.reveal_unlocked) {
+    if (!compSeason) {
+        document.getElementById('leaderboard-season-bar').hidden = true;
+        showGate('No data recorded yet for this competition.');
+        return;
+    }
+
+    const resolvedSeasonYear = compSeason.season_year;
+    const isConcluded = compSeason.status === 'concluded';
+    const isUnlocked = compSeason.reveal_unlocked || isConcluded;
+
+    await populateSeasonSelector(comp, resolvedSeasonYear);
+
+    if (!isUnlocked) {
         showGate("The leaderboard for this competition unlocks once its first match kicks off.");
         return;
     }
 
-    const seasonYear = compSeason.season_year;
-
-    let matchesCache, entries, predictions, currentUser;
+    let matchesCache, entries, predictions, fixedRankByEntry, currentUser;
     try {
-        [matchesCache, entries, predictions, currentUser] = await Promise.all([
-            getMatchesCache(comp, seasonYear),
-            getEntriesWithProfiles(comp, seasonYear),
-            getAllPredictions(comp, seasonYear),
+        [matchesCache, entries, predictions, fixedRankByEntry, currentUser] = await Promise.all([
+            getMatchesCache(comp, resolvedSeasonYear),
+            getEntriesWithProfiles(comp, resolvedSeasonYear),
+            getAllPredictions(comp, resolvedSeasonYear),
+            getFixedRankPredictionsByEntry(comp, resolvedSeasonYear),
             getCurrentUser(),
         ]);
     } catch (err) {
         console.error('Failed to load leaderboard data:', err);
         showGate('Failed to load the leaderboard — please try again later.');
+        return;
+    }
+
+    if (entries.length === 0) {
+        showGate('No one has a prediction recorded for this competition yet.');
         return;
     }
 
@@ -394,14 +492,6 @@ async function loadLeaderboard(comp) {
         favoriteIds = [];
     }
 
-    // Fixed-rank entries (historical/imported seasons) are a later phase -
-    // this view only knows how to score live match-prediction entries.
-    const liveEntries = entries.filter((entry) => entry.entry_mode === 'live');
-    if (liveEntries.length === 0) {
-        showGate('No one has saved a prediction for this competition yet.');
-        return;
-    }
-
     const predictionsByUser = new Map();
     predictions.forEach((prediction) => {
         if (!predictionsByUser.has(prediction.user_id)) {
@@ -410,18 +500,34 @@ async function loadLeaderboard(comp) {
         predictionsByUser.get(prediction.user_id).set(prediction.match_id, prediction);
     });
 
-    const actualStandings = computeActualStandings(matchesCache);
+    // Once a season is concluded, its actual standings come from the
+    // permanent snapshot rather than matches_cache - which is empty for
+    // seasons this app never tracked live (24/25, 25/26), and which the
+    // plan deliberately stops treating as authoritative for a finished
+    // season even when it's still technically populated.
+    let actualStandings;
+    try {
+        actualStandings = isConcluded
+            ? await getSeasonActualStandings(comp, resolvedSeasonYear)
+            : computeActualStandings(matchesCache);
+    } catch (err) {
+        console.error('Failed to load actual standings:', err);
+        showGate('Failed to load the leaderboard — please try again later.');
+        return;
+    }
     const actualRankByTeamId = new Map(actualStandings.map((team) => [team.id, team.rank]));
 
-    const results = liveEntries.map((entry) => {
-        const predictedStandings = computeUserPredictedStandings(matchesCache, predictionsByUser.get(entry.user_id) || new Map());
+    const results = entries.map((entry) => {
+        const predictedStandings = entry.entry_mode === 'fixed_rank'
+            ? (fixedRankByEntry.get(entry.id) || [])
+            : computeUserPredictedStandings(matchesCache, predictionsByUser.get(entry.user_id) || new Map());
         const { offsetByTeamId, total, bangOn } = computeOffsets(predictedStandings, actualStandings);
         return { entry, predictedStandings, offsetByTeamId, total, bangOn };
     });
 
     session = {
         comp,
-        seasonYear,
+        seasonYear: resolvedSeasonYear,
         matchesCache,
         predictionsByUser,
         results,
@@ -440,13 +546,20 @@ document.addEventListener('DOMContentLoaded', () => {
     wireCompButtons();
     window.addEventListener('comp-changed', (event) => {
         applySharedTheme(event.detail.comp);
-        loadLeaderboard(event.detail.comp);
+        loadLeaderboard(event.detail.comp); // switching competition resets to its current season
     });
 
     document.querySelectorAll('.view-tab').forEach((tab) => {
         tab.addEventListener('click', () => setSelectedView(tab.dataset.view));
     });
     setSelectedView(getSelectedView());
+
+    const seasonSelect = document.getElementById('season-select');
+    if (seasonSelect) {
+        seasonSelect.addEventListener('change', () => {
+            loadLeaderboard(currentComp, Number(seasonSelect.value));
+        });
+    }
 
     setupNav();
     setupDrilldownModal();
@@ -458,14 +571,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sign-in redirects the whole page (a fresh DOMContentLoaded already
     // picks up the right user), but sign-out doesn't navigate anywhere - so
     // this is what keeps "self" ordering/labeling from going stale if
-    // someone signs out while already looking at the leaderboard.
-    let hasHandledInitialAuth = false;
-    onAuthStateChange(() => {
-        if (!hasHandledInitialAuth) {
-            hasHandledInitialAuth = true;
+    // someone signs out while already looking at the leaderboard. Must
+    // compare user ids, not just "did this fire again" - Supabase also
+    // fires this on a plain token refresh (notably when the tab regains
+    // focus after being backgrounded), which isn't a real sign-in/out and
+    // was previously re-fetching/re-rendering the whole page every time you
+    // switched back to the tab.
+    let previousUserId; // undefined = unknown yet, distinct from null = signed out
+    onAuthStateChange((user) => {
+        const currentUserId = user ? user.id : null;
+        if (previousUserId === undefined) {
+            previousUserId = currentUserId;
             return;
         }
-        loadLeaderboard(comp);
+        if (currentUserId === previousUserId) {
+            return;
+        }
+        previousUserId = currentUserId;
+        loadLeaderboard(currentComp, session ? session.seasonYear : undefined);
     });
 
     if ('serviceWorker' in navigator) {

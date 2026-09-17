@@ -6,6 +6,7 @@ import { getCurrentUser, onAuthStateChange, signInWithGoogle, signOut, consumePe
 import { isAdminUser } from './adminConfig.js';
 import { linkWithComp, syncUrlToSelectedComp } from './compSelector.js';
 import { showNotification, resumeQueuedNotification } from './notify.js';
+import { maybeShowGuestClaimPrompt } from './guestClaimPrompt.js';
 
 // Tracks the previously-seen user id so a toast only fires on an actual
 // sign-in/out transition, not on every page load's initial auth check
@@ -87,6 +88,7 @@ function updateAccountUI(user) {
     previousUserId = currentUserId;
 
     updateAdminLinkVisibility(user);
+    maybeShowGuestClaimPrompt(user);
 }
 
 function openSidebar() {

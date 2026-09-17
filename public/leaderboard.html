@@ -65,18 +65,24 @@
         </div>
     </aside>
     <div class="container">
-        <div id="leaderboard-gate" class="page-placeholder" hidden>
-            <p id="leaderboard-gate-message"></p>
-        </div>
-        <div id="leaderboard-content" class="leaderboard-content" hidden>
-            <div class="leaderboard-view-switcher">
-                <button class="view-tab" data-view="breakdown">Breakdown</button>
-                <button class="view-tab" data-view="table">Actual Table</button>
-                <button class="view-tab" data-view="live">Leaderboard</button>
+        <div class="leaderboard-page">
+            <div id="leaderboard-season-bar" class="leaderboard-season-bar" hidden>
+                <label for="season-select">Season</label>
+                <select id="season-select"></select>
             </div>
-            <div id="leaderboard-live" class="leaderboard-view"></div>
-            <div id="leaderboard-table" class="leaderboard-view" hidden></div>
-            <div id="leaderboard-breakdown" class="leaderboard-view" hidden></div>
+            <div id="leaderboard-gate" class="page-placeholder" hidden>
+                <p id="leaderboard-gate-message"></p>
+            </div>
+            <div id="leaderboard-content" class="leaderboard-content" hidden>
+                <div class="leaderboard-view-switcher">
+                    <button class="view-tab" data-view="breakdown">Breakdown</button>
+                    <button class="view-tab" data-view="table">Actual Table</button>
+                    <button class="view-tab" data-view="live">Leaderboard</button>
+                </div>
+                <div id="leaderboard-live" class="leaderboard-view"></div>
+                <div id="leaderboard-table" class="leaderboard-view" hidden></div>
+                <div id="leaderboard-breakdown" class="leaderboard-view" hidden></div>
+            </div>
         </div>
     </div>
     <div id="notification" class="notification"></div>
@@ -99,7 +105,7 @@
                     <tbody></tbody>
                 </table>
             </div>
-            <div>
+            <div id="drilldown-matches-section">
                 <h3>Match Predictions</h3>
                 <div id="drilldown-matches"></div>
             </div>

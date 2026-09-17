@@ -26,10 +26,20 @@ export function closeDrilldown() {
 // predictedStandings: this user's computeStandings() output
 // actualRankByTeamId: Map(team_id -> actual rank), missing an entry for a
 //   team that hasn't played yet
-export function openDrilldown(user, matchesCache, predictionsByMatchId, predictedStandings, actualRankByTeamId, colors) {
+// options.hideMatches: true for a fixed-rank entry (historical/guest import)
+//   - those only ever have a final ranking on record, never individual match
+//   scores, so the "Match Predictions" section doesn't apply at all.
+export function openDrilldown(user, matchesCache, predictionsByMatchId, predictedStandings, actualRankByTeamId, colors, options = {}) {
     renderHeader(user);
     renderStandingsTable(predictedStandings, actualRankByTeamId, colors);
-    renderMatches(matchesCache, predictionsByMatchId, colors);
+
+    const matchesSection = document.getElementById('drilldown-matches-section');
+    if (options.hideMatches) {
+        matchesSection.hidden = true;
+    } else {
+        matchesSection.hidden = false;
+        renderMatches(matchesCache, predictionsByMatchId, colors);
+    }
 
     document.getElementById('drilldown-overlay').hidden = false;
     document.getElementById('drilldown-modal').hidden = false;
@@ -72,10 +82,12 @@ function renderStandingsTable(predictedStandings, actualRankByTeamId, colors) {
         tr.appendChild(rankCell);
 
         const logoCell = document.createElement('td');
-        const logo = document.createElement('img');
-        logo.src = team.logo;
-        logo.alt = '';
-        logoCell.appendChild(logo);
+        if (team.logo) {
+            const logo = document.createElement('img');
+            logo.src = team.logo;
+            logo.alt = '';
+            logoCell.appendChild(logo);
+        }
         tr.appendChild(logoCell);
 
         const nameCell = document.createElement('td');

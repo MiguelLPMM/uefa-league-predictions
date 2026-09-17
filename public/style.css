@@ -579,7 +579,152 @@ input[type="text"]::placeholder {
     color: white;
 }
 
-/* Leaderboard page (views 2 & 3 - actual table and live ranking) */
+/* Admin page */
+.admin-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(16px, 4vw, 24px);
+    padding: clamp(10px, 4vw, 20px);
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 700px;
+    overflow-y: auto;
+    color: white;
+}
+
+.admin-content[hidden] {
+    display: none;
+}
+
+.admin-section {
+    background-color: #0a0a61;
+    border-radius: 8px;
+    padding: clamp(12px, 3vw, 20px);
+    box-sizing: border-box;
+}
+
+.admin-section h2 {
+    margin: 0 0 0.5em;
+    font-size: 1.1em;
+}
+
+.admin-hint {
+    font-size: 0.85em;
+    opacity: 0.8;
+    margin: 0.3em 0 0.8em;
+}
+
+.admin-field-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    flex-wrap: wrap;
+}
+
+.admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+}
+
+.admin-form label {
+    font-size: 0.9em;
+    margin-top: 0.4em;
+}
+
+.admin-content input[type="text"],
+.admin-content input[type="email"],
+.admin-content input[type="number"],
+.admin-content textarea,
+.admin-content select,
+.admin-select {
+    background-color: #17177a;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 5px;
+    padding: 0.5em 0.6em;
+    font-size: 0.95em;
+    font-family: inherit;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.admin-content textarea {
+    resize: vertical;
+}
+
+.admin-content .sidebar-account-btn {
+    align-self: flex-start;
+    width: auto;
+    margin-top: 0.4em;
+}
+
+.admin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+}
+
+.admin-list-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6em;
+}
+
+.admin-list-row span {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.admin-list-row .sidebar-account-btn {
+    width: auto;
+}
+
+#manual-merge-result {
+    margin-top: 0.6em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    align-items: flex-start;
+}
+
+/* Leaderboard page */
+.leaderboard-page {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+}
+
+/* Sits above the gate/content so past concluded seasons stay browsable even
+   while the current season is still locked. */
+.leaderboard-season-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    padding: clamp(10px, 4vw, 20px) clamp(10px, 4vw, 20px) 0;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    color: white;
+}
+
+.leaderboard-season-bar[hidden] {
+    display: none;
+}
+
+.leaderboard-season-bar select {
+    background-color: #0a0a61;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 5px;
+    padding: 0.4em 0.6em;
+    font-size: 0.95em;
+}
+
 .leaderboard-content {
     flex: 1 1 auto;
     display: flex;
@@ -621,6 +766,10 @@ input[type="text"]::placeholder {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
+    /* Smooth momentum scrolling on iOS - choppy/step-wise scrolling is what
+       makes sticky cells visibly lag behind and briefly show whatever was
+       scrolling underneath them. */
+    -webkit-overflow-scrolling: touch;
 }
 
 .leaderboard-view[hidden] {
@@ -677,63 +826,71 @@ input[type="text"]::placeholder {
     white-space: nowrap;
 }
 
-/* Actual-table view (view 2) - position/team frozen on the left, users
-   scroll laterally */
+/* Actual-table view (view 2) - rank+team frozen on the left as ONE sticky
+   column (not two adjacent ones that have to land at exactly the same
+   offset - see renderTableView's comment for why), users scroll laterally */
 .leaderboard-actual-table {
     border-collapse: collapse;
     font-size: clamp(0.7rem, 3vw, 1rem);
+    /* Without this, table-layout defaults to auto and the browser's own
+       heuristics can size columns inconsistently across renders. */
+    table-layout: fixed;
 }
 
 .leaderboard-actual-table th, .leaderboard-actual-table td {
     padding: clamp(4px, 1.5vw, 8px);
     text-align: center;
     white-space: nowrap;
+    box-sizing: border-box;
 }
 
 .leaderboard-actual-table .frozen-col {
     position: sticky;
+    left: 0;
     z-index: 2;
-}
-
-.leaderboard-actual-table th.frozen-col {
-    z-index: 3;
+    min-width: clamp(11em, 32vw, 15em);
+    max-width: clamp(11em, 32vw, 15em);
+    text-align: left;
 }
 
 /* Anchor the header row (user names) so it stays visible while scrolling
-   vertically through the 36 teams - same corner-pinning approach as the
-   breakdown table below. */
+   vertically through the 36 teams. The header's own frozen-col cell needs a
+   higher z-index than the body's, since both are sticky (top and left
+   respectively) and would otherwise fight over which paints on top where
+   they overlap in the corner. */
 .leaderboard-actual-table thead th {
     position: sticky;
     top: 0;
-    z-index: 3;
+    z-index: 2;
 }
 
 .leaderboard-actual-table thead th.frozen-col {
-    z-index: 4;
+    z-index: 3;
 }
 
-.leaderboard-actual-table .frozen-col:first-child {
-    left: 0;
-    width: 2.5em;
+.frozen-team-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    overflow: hidden;
 }
 
-.leaderboard-actual-table .team-col {
-    left: 2.5em;
-    min-width: clamp(9em, 30vw, 14em);
-    max-width: clamp(9em, 30vw, 14em);
-    text-align: left;
+.frozen-rank {
+    font-weight: bold;
+    width: 1.4em;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.frozen-team-inner img {
+    height: clamp(16px, 5vw, 22px);
+    flex-shrink: 0;
+}
+
+.frozen-team-name {
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.leaderboard-actual-table .team-col img {
-    height: clamp(16px, 5vw, 22px);
-    vertical-align: middle;
-    margin-right: 0.4em;
-}
-
-.leaderboard-actual-table .team-col span {
-    vertical-align: middle;
+    white-space: nowrap;
 }
 
 .leaderboard-actual-table .user-col {
@@ -848,8 +1005,12 @@ input[type="text"]::placeholder {
 
 /* Team (wide) and off-value (narrow) as two distinct, independently
    centered sub-columns - not an even split - so the off value lands at the
-   same horizontal position on every row regardless of team name length. */
-.breakdown-cell {
+   same horizontal position on every row regardless of team name length.
+   This grid lives on an inner wrapper div, never on the <td> itself -
+   setting display:grid directly on a table cell overrides its
+   display:table-cell and makes it escape normal row layout (cells stack
+   instead of sitting side by side in the row). */
+.breakdown-cell-inner {
     display: grid;
     grid-template-columns: 1fr 2.4em;
     align-items: center;
@@ -880,6 +1041,22 @@ input[type="text"]::placeholder {
     font-size: 0.9em;
     opacity: 0.85;
     text-align: center;
+}
+
+/* On narrow screens the per-user column is too tight for a team name to
+   read as anything but a truncated fragment ("Ba…") - the logo alone reads
+   better than a mangled abbreviation. */
+@media (max-width: 600px) {
+    .breakdown-team span {
+        display: none;
+    }
+
+    /* With the name gone, center the logo in the leftover space instead of
+       leaving it pinned to the left edge (justify-content:flex-start is
+       what the desktop team+name layout wants). */
+    .breakdown-team {
+        justify-content: center;
+    }
 }
 
 /* Drill-down modal */
@@ -969,6 +1146,20 @@ input[type="text"]::placeholder {
 #drilldown-matches .home img,
 #drilldown-matches .away img {
     margin: 0;
+}
+
+/* Guest-claim prompt modal (built entirely in JS - see guestClaimPrompt.js).
+   Reuses .drilldown-modal/.drilldown-modal-header/.drilldown-modal-body for
+   the shell, since it's the same "centered floating box" shape. */
+.guest-claim-title {
+    font-weight: bold;
+}
+
+.guest-claim-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    margin-bottom: 0.5em;
 }
 
 /* Notification */

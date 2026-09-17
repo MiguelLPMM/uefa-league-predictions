@@ -68,8 +68,56 @@
         <div id="admin-gate-message" class="page-placeholder">
             <p>Sign in with the site owner's Google account to access this page.</p>
         </div>
-        <div id="admin-content" class="page-placeholder" hidden>
-            <p>Admin tools are coming in a later phase.</p>
+        <div id="admin-content" class="admin-content" hidden>
+            <section class="admin-section">
+                <h2>Import a guest entry</h2>
+                <p class="admin-hint">For a past participant with no account, or anyone who submitted this season outside the app. Competition follows the buttons in the top-left nav. The guest key is a stable id (lowercase, no spaces/accents) — reuse the same key across seasons for the same person so merging their account later links everything at once.</p>
+                <form id="guest-import-form" class="admin-form">
+                    <label for="guest-import-season">Season</label>
+                    <select id="guest-import-season"></select>
+
+                    <label for="guest-import-key">Guest key</label>
+                    <input type="text" id="guest-import-key" list="guest-key-options" placeholder="e.g. montes" required>
+                    <datalist id="guest-key-options"></datalist>
+
+                    <label for="guest-import-name">Display name</label>
+                    <input type="text" id="guest-import-name" placeholder="e.g. Montes" required>
+
+                    <label for="guest-import-weeks-late">Weeks late</label>
+                    <select id="guest-import-weeks-late">
+                        <option value="0">0 (on time)</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                    </select>
+
+                    <label for="guest-import-ranking">Predicted ranking — one team per line, best to worst (matched automatically against the real roster for the season above)</label>
+                    <textarea id="guest-import-ranking" rows="10" required></textarea>
+
+                    <button type="submit" class="sidebar-account-btn">Import</button>
+                </form>
+            </section>
+
+            <section class="admin-section">
+                <h2>Pending claim requests</h2>
+                <p class="admin-hint">Someone signed in and said one of these unclaimed imports is theirs. Approving links every competition/season under that guest key to their account at once.</p>
+                <div id="claim-requests-list" class="admin-list"></div>
+            </section>
+
+            <section class="admin-section">
+                <h2>Manually link an account to a guest identity</h2>
+                <p class="admin-hint">Works even without a pending request — use this if someone said "none of these" but you know better, or to link proactively.</p>
+                <form id="manual-merge-form" class="admin-form">
+                    <label for="manual-merge-email">User's email</label>
+                    <input type="email" id="manual-merge-email" required>
+                    <button type="submit" class="sidebar-account-btn">Find user</button>
+                </form>
+                <div id="manual-merge-result"></div>
+            </section>
         </div>
     </div>
     <div id="notification" class="notification"></div>
