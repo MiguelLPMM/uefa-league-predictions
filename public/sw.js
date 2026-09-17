@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const SHELL_CACHE = `uefa-predictions-shell-${CACHE_VERSION}`;
 const API_CACHE = `uefa-predictions-api-${CACHE_VERSION}`;
 
@@ -8,6 +8,9 @@ const SHELL_ASSETS = [
     '/index.html',
     '/style.css',
     '/js/main.js',
+    '/js/standings.js',
+    '/js/supabaseClient.js',
+    '/vendor/supabase.js',
     '/manifest.json',
     '/assets/ucl.ico',
     '/assets/ucl-dark.ico',
@@ -79,7 +82,11 @@ async function cacheFirst(request) {
     if (networkResponse) return networkResponse;
 
     if (request.mode === 'navigate') {
-        return cache.match('/index.html');
+        // Serve whichever page was actually requested if we have it cached
+        // (index.html, leaderboard.html, admin.html, ...), falling back to
+        // index.html only if that exact page was never cached.
+        const url = new URL(request.url);
+        return (await cache.match(url.pathname)) || cache.match('/index.html');
     }
     return Response.error();
 }
@@ -91,7 +98,10 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    if (url.pathname.startsWith('/api/matches/')) {
+    // Any backend API route (matches, sync, and whatever gets added later)
+    // should always try the network first — never treat it as static shell
+    // content.
+    if (url.pathname.startsWith('/api/')) {
         event.respondWith(networkFirst(event.request));
         return;
     }

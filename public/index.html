@@ -7,7 +7,9 @@
     <link rel="icon" href="assets/ucl.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
 
-    <script src="js/main.js"></script>  <!-- Link to external script -->
+    <script src="vendor/supabase.js"></script>  <!-- Vendored Supabase client library (UMD, sets window.supabase) -->
+    <script type="module" src="js/supabaseClient.js"></script>
+    <script type="module" src="js/main.js"></script>  <!-- Link to external script (ES module) -->
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 

@@ -1,9 +1,14 @@
-// Object to store team information
-let teamsData = {};
+import { computeStandings } from './standings.js';
 
 let notificationTimeout; // Variable to store the timeout ID for the notification
 
 let currentComp = 'ucl'; // Default competition
+
+// Lightweight per-match metadata for the currently loaded competition, used to
+// rebuild the standings table from scratch on every score change. Real
+// (FINISHED) results are fixed; everything else is read live from the score
+// inputs each time the table re-renders.
+let currentMatches = [];
 
 const colorSchemes = {
     ucl: {
@@ -80,7 +85,7 @@ async function fetchMatches(comp) {
 
     updateColorScheme(); // Update the color scheme based on the competition
 
-    teamsData = {}; // Reset teamsData object when fetching new matches
+    currentMatches = []; // Reset match metadata when fetching new matches
     const savedPredictions = loadPredictions(comp); // Restore any previously saved predictions
     const response = await fetch('/api/matches/' + comp);
     const matches = await response.json();
@@ -93,17 +98,17 @@ async function fetchMatches(comp) {
     matches.forEach(match => {
         if (match.matchday.sequenceNumber !== currentMatchday) {
             currentMatchday = match.matchday.sequenceNumber;
-            
+
             // Create a new matchday header and div for matches when matchday changes
             matchdayDiv = document.createElement('div'); // Create a new matchday div
             matchdayDiv.classList.add('matchday');
             matchesDiv.appendChild(matchdayDiv);
-            
+
             // Create a header for the matchday
             const matchdayHeader = document.createElement('h2');
             matchdayHeader.textContent = `Matchday ${currentMatchday}`;
             matchdayDiv.appendChild(matchdayHeader);
-            
+
             // Create a container for the matches
             const matchesContainer = document.createElement('div');
             matchesContainer.classList.add('matches');
@@ -118,28 +123,18 @@ async function fetchMatches(comp) {
             const awayTeamName = match.awayTeam.internationalName;
             const awayTeamLogo = match.awayTeam.logoUrl;
 
-            // Initialize teams in the teamsData object if not already present
-            if (!teamsData[homeTeamId]) {
-                teamsData[homeTeamId] = { name: homeTeamName, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: homeTeamLogo, awayGoals: 0, awayWins: 0, awayMatches: {}, opponents: [], opponentsPoints: 0, opponentsGoalDifference: 0, opponentsGoalsFor: 0 };
-            }
-            if (!teamsData[awayTeamId]) {
-                teamsData[awayTeamId] = { name: awayTeamName, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0, matches: {}, logo: awayTeamLogo, awayGoals: 0, awayWins: 0, awayMatches: {}, opponents: [], opponentsPoints: 0, opponentsGoalDifference: 0, opponentsGoalsFor: 0 };
-            }
+            const finished = match.status === 'FINISHED';
 
-            let homeGoals = 0;
-            let awayGoals = 0;
             let disabled = '';
             let homeResult = 'placeholder="0"';
             let awayResult = 'placeholder="0"';
             let inputClass = 'score-input';
 
             // Check if match has happened
-            if (match.status === 'FINISHED') {
-                homeGoals = match.score.total.home;
-                awayGoals = match.score.total.away;
+            if (finished) {
                 disabled = 'disabled';
-                homeResult = `value="${homeGoals}"`;
-                awayResult = `value="${awayGoals}"`;
+                homeResult = `value="${match.score.total.home}"`;
+                awayResult = `value="${match.score.total.away}"`;
                 inputClass = 'score-input-finished';
             } else {
                 // Restore a saved prediction for this match, if one exists
@@ -150,11 +145,14 @@ async function fetchMatches(comp) {
                 }
             }
 
-            teamsData[homeTeamId].matches[match.id] = { gf: homeGoals, ga: awayGoals };
-            teamsData[awayTeamId].matches[match.id] = { gf: homeGoals, ga: awayGoals };
-            teamsData[awayTeamId].awayMatches[match.id] = { gf: homeGoals, ga: awayGoals };
-            teamsData[homeTeamId].opponents.push(awayTeamId);
-            teamsData[awayTeamId].opponents.push(homeTeamId);
+            currentMatches.push({
+                id: match.id,
+                home: { id: homeTeamId, name: homeTeamName, logo: homeTeamLogo },
+                away: { id: awayTeamId, name: awayTeamName, logo: awayTeamLogo },
+                finished,
+                homeGoals: finished ? match.score.total.home : null,
+                awayGoals: finished ? match.score.total.away : null,
+            });
 
             // Create the match element
             const matchDiv = document.createElement('div');
@@ -174,7 +172,7 @@ async function fetchMatches(comp) {
             `;
 
             // Append the match to the matches container
-            matchdayDiv.querySelector('.matches').appendChild(matchDiv);  
+            matchdayDiv.querySelector('.matches').appendChild(matchDiv);
 
             // Add event listeners to update team data when scores change
             const homeInput = document.getElementById(`home-${match.id}`);
@@ -182,21 +180,21 @@ async function fetchMatches(comp) {
 
             // Add input event listeners for updating match results and saving predictions
             homeInput.addEventListener('input', () => {
-                updateTeamStats(match.id, homeTeamId, awayTeamId);
+                renderLeagueTable();
                 savePrediction(comp, match.id, homeInput.value, awayInput.value);
             });
             awayInput.addEventListener('input', () => {
-                updateTeamStats(match.id, homeTeamId, awayTeamId);
+                renderLeagueTable();
                 savePrediction(comp, match.id, homeInput.value, awayInput.value);
             });
 
             // Add keydown event listeners for handling arrow keys movement
             homeInput.addEventListener('keydown', handleScoreInputKeydown);
             awayInput.addEventListener('keydown', handleScoreInputKeydown);
-
-            updateTeamStats(match.id, homeTeamId, awayTeamId);
         }
     });
+
+    renderLeagueTable();
 
     // Hide loading indicator and show matches container
     document.getElementById('loading-indicator').style.display = 'none';
@@ -207,10 +205,10 @@ async function fetchMatches(comp) {
 // Function to update the color scheme
 function updateColorScheme() {
     const colors = colorSchemes[currentComp] || colorSchemes.ucl; // Default to ucl if comp is not found
-    
+
     // Apply color scheme to the body
     document.body.style.backgroundColor = colors.background;
-    
+
     // Apply color scheme to navigation bar
     const navBar = document.querySelector('nav');
     navBar.style.backgroundColor = colors.nav;
@@ -304,170 +302,50 @@ function updateColorScheme() {
 
 }
 
-// Function to update team stats based on score input
-function updateTeamStats(matchId, homeTeamId, awayTeamId) {
-    const homeScore = parseInt(document.getElementById(`home-${matchId}`).value) || 0;
-    const awayScore = parseInt(document.getElementById(`away-${matchId}`).value) || 0;
-
-    // Update match data
-    teamsData[homeTeamId].matches[matchId].gf = homeScore;
-    teamsData[homeTeamId].matches[matchId].ga = awayScore;
-    teamsData[awayTeamId].matches[matchId].gf = awayScore;
-    teamsData[awayTeamId].matches[matchId].ga = homeScore;
-    teamsData[awayTeamId].awayMatches[matchId].gf = awayScore;
-    teamsData[awayTeamId].awayMatches[matchId].ga = homeScore;
-
-    // Reset data (will be recalculated below)
-    teamsData[homeTeamId].goalsFor = 0;
-    teamsData[homeTeamId].goalsAgainst = 0;
-    teamsData[homeTeamId].wins = 0;
-    teamsData[homeTeamId].draws = 0;
-    teamsData[homeTeamId].losses = 0;
-    teamsData[homeTeamId].awayGoals = 0;
-    teamsData[homeTeamId].awayWins = 0;
-    teamsData[awayTeamId].goalsFor = 0;
-    teamsData[awayTeamId].goalsAgainst = 0;
-    teamsData[awayTeamId].wins = 0;
-    teamsData[awayTeamId].draws = 0;
-    teamsData[awayTeamId].losses = 0;
-    teamsData[awayTeamId].awayGoals = 0;
-    teamsData[awayTeamId].awayWins = 0;
-
-    // Home team stats
-    for (const homeTeamMatch of Object.values(teamsData[homeTeamId].matches)) {
-        teamsData[homeTeamId].goalsFor += homeTeamMatch.gf;
-        teamsData[homeTeamId].goalsAgainst += homeTeamMatch.ga;
-        if (homeTeamMatch.gf > homeTeamMatch.ga) {
-            teamsData[homeTeamId].wins++;
-        } else if (homeTeamMatch.gf < homeTeamMatch.ga) {
-            teamsData[homeTeamId].losses++;
-        } else {
-            teamsData[homeTeamId].draws++;
-        }
+// Reads the goals for one match: fixed real score if finished, otherwise
+// whatever is currently typed in its score inputs (defaulting to 0), so the
+// table updates live as the user predicts future matches.
+function readGoalsForMatch(match) {
+    if (match.finished) {
+        return { home: match.homeGoals, away: match.awayGoals };
     }
-    teamsData[homeTeamId].points = teamsData[homeTeamId].wins * 3 + teamsData[homeTeamId].draws;
-    for (const homeTeamAwayMatch of Object.values(teamsData[homeTeamId].awayMatches)) {
-        teamsData[homeTeamId].awayGoals += homeTeamAwayMatch.gf;
-        if (homeTeamAwayMatch.gf > homeTeamAwayMatch.ga) {
-            teamsData[homeTeamId].awayWins++;
-        }
-    }
-
-    // Away team stats
-    for (const awayTeamMatch of Object.values(teamsData[awayTeamId].matches)) {
-        teamsData[awayTeamId].goalsFor += awayTeamMatch.gf;
-        teamsData[awayTeamId].goalsAgainst += awayTeamMatch.ga;
-        if (awayTeamMatch.gf > awayTeamMatch.ga) {
-            teamsData[awayTeamId].wins++;
-        } else if (awayTeamMatch.gf < awayTeamMatch.ga) {
-            teamsData[awayTeamId].losses++;
-        } else {
-            teamsData[awayTeamId].draws++;
-        }
-    }
-    teamsData[awayTeamId].points = teamsData[awayTeamId].wins * 3 + teamsData[awayTeamId].draws;
-    for (const awayTeamAwayMatch of Object.values(teamsData[awayTeamId].awayMatches)) {
-        teamsData[awayTeamId].awayGoals += awayTeamAwayMatch.gf;
-        if (awayTeamAwayMatch.gf > awayTeamAwayMatch.ga) {
-            teamsData[awayTeamId].awayWins++;
-        }
-    }
-
-    // Update opponents data for other teams
-    updateOpponentsDataAgainst(homeTeamId);
-    updateOpponentsDataAgainst(awayTeamId);
-
-    // Update the league table display
-    updateLeagueTable();
+    const home = parseInt(document.getElementById(`home-${match.id}`)?.value, 10) || 0;
+    const away = parseInt(document.getElementById(`away-${match.id}`)?.value, 10) || 0;
+    return { home, away };
 }
 
-// Function to update opponents data for the teams that play against said team
-function updateOpponentsDataAgainst(teamId) {
-    const opponents = teamsData[teamId].opponents;
-    opponents.forEach(opponentId => {
-        updateOpponentsData(opponentId);
-    });
-}
-
-// Function to update opponents data for a team
-function updateOpponentsData(teamId) {
-    const team = teamsData[teamId];
-    team.opponentsPoints = 0;
-    team.opponentsGoalDifference = 0;
-    team.opponentsGoalsFor = 0;
-
-    team.opponents.forEach(opponentId => {
-        const opponent = teamsData[opponentId];
-        team.opponentsPoints += opponent.points;
-        team.opponentsGoalDifference += opponent.goalsFor - opponent.goalsAgainst;
-        team.opponentsGoalsFor += opponent.goalsFor;
-    });
-}
-
-// Function to update the league table display
-function updateLeagueTable() {
+// Function to recompute and re-render the league table from the current
+// (real + predicted) scores of every loaded match.
+function renderLeagueTable() {
     const tableBody = document.querySelector('#league-table tbody');
     tableBody.innerHTML = '';  // Clear current table
 
-    // Convert teamsData object to an array for sorting
-    const teamsArray = Object.keys(teamsData).map(teamId => ({
-        name: teamsData[teamId].name,
-        ...teamsData[teamId]
-    }));
-
-    // Sort teams according to "Article 18 Equality of points – league phase" of the regulations of the UEFA Champions League
-    // And yes, alphabetical order is not one of the criteria but here it is for the sake of organization
-    teamsArray.sort((a, b) => {
-        // Sort by points
-        if (b.points !== a.points) return b.points - a.points;
-        
-        // Sort by goal difference (goalsFor - goalsAgainst)
-        const goalDifferenceB = b.goalsFor - b.goalsAgainst;
-        const goalDifferenceA = a.goalsFor - a.goalsAgainst;
-        if (goalDifferenceB !== goalDifferenceA) return goalDifferenceB - goalDifferenceA;
-        
-        // Sort by goals scored
-        if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-
-        // Sort by away goals 
-        if (b.awayGoals !== a.awayGoals) return b.awayGoals - a.awayGoals;
-
-        // Sort by wins
-        if (b.wins !== a.wins) return b.wins - a.wins;
-
-        // Sort by away wins
-        if (b.awayWins !== a.awayWins) return b.awayWins - a.awayWins;
-
-        // Sort by opponents points
-        if (b.opponentsPoints !== a.opponentsPoints) return b.opponentsPoints - a.opponentsPoints;
-
-        // Sort by opponents goal difference
-        if (b.opponentsGoalDifference !== a.opponentsGoalDifference) return b.opponentsGoalDifference - a.opponentsGoalDifference;
-
-        // Sort by opponents goals for
-        if (b.opponentsGoalsFor !== a.opponentsGoalsFor) return b.opponentsGoalsFor - a.opponentsGoalsFor;
-
-        // Here would be the sort by disciplinary points (lower is better)
-
-        // Here would be the sort by coefficient
-        
-        // Sort alphabetically
-        return a.name.localeCompare(b.name);
+    const matchesForStandings = currentMatches.map((match) => {
+        const { home: homeGoals, away: awayGoals } = readGoalsForMatch(match);
+        return {
+            id: match.id,
+            home: match.home,
+            away: match.away,
+            homeGoals,
+            awayGoals,
+        };
     });
 
+    const standings = computeStandings(matchesForStandings);
+
     // Populate the table with sorted teams
-    teamsArray.forEach((team, index) => {
+    standings.forEach((team) => {
         const row = document.createElement('tr');
         // Add 'top-8' class to the first 8 teams
-        if (index < 8) {
+        if (team.rank <= 8) {
             row.classList.add('top-8');
         }
         // Add 'top-24' class to the first 24 teams
-        else if (index < 24) {
+        else if (team.rank <= 24) {
             row.classList.add('top-24');
         }
         row.innerHTML = `
-            <td>${teamsArray.indexOf(team) + 1}</td> <!-- Position column -->
+            <td>${team.rank}</td> <!-- Position column -->
             <td><img src="${team.logo}" alt="${team.name} logo" style="width: 30px; height: 30px;"></td> <!-- Logo column -->
             <td>${team.name}</td>
             <td>${team.wins}</td>

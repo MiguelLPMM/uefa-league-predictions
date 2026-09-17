@@ -1,3 +1,9 @@
 {
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "crons": [
+    {
+      "path": "/api/sync-matches",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }
