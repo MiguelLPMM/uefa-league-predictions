@@ -646,21 +646,6 @@ input[type="text"]::placeholder {
     text-align: center;
 }
 
-.leaderboard-user {
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
-.leaderboard-user img {
-    width: clamp(22px, 6vw, 32px);
-    height: clamp(22px, 6vw, 32px);
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
 .leaderboard-name {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -714,6 +699,19 @@ input[type="text"]::placeholder {
     z-index: 3;
 }
 
+/* Anchor the header row (user names) so it stays visible while scrolling
+   vertically through the 36 teams - same corner-pinning approach as the
+   breakdown table below. */
+.leaderboard-actual-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.leaderboard-actual-table thead th.frozen-col {
+    z-index: 4;
+}
+
 .leaderboard-actual-table .frozen-col:first-child {
     left: 0;
     width: 2.5em;
@@ -721,8 +719,8 @@ input[type="text"]::placeholder {
 
 .leaderboard-actual-table .team-col {
     left: 2.5em;
-    min-width: 9em;
-    max-width: 9em;
+    min-width: clamp(9em, 30vw, 14em);
+    max-width: clamp(9em, 30vw, 14em);
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -742,10 +740,235 @@ input[type="text"]::placeholder {
     min-width: 4.5em;
 }
 
-.leaderboard-actual-table .off-bangon {
+/* Shared "exact match" highlight - used in the actual-table cells, the
+   breakdown view's off values, and the drill-down's predicted table. Not
+   scoped to one table since all 3 reuse it. */
+.off-bangon {
     font-weight: bold;
     color: #00eeff; /* Matches the ucl score-input accent; fine as a fixed
                         "exact match" highlight across every competition */
+}
+
+/* Clickable name/avatar/star chip - shared by every view's user
+   representation (live-ranking rows, table/breakdown column headers, and
+   the drill-down modal's own header) */
+.leaderboard-user-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    cursor: pointer;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.leaderboard-user-chip img {
+    width: clamp(20px, 5vw, 28px);
+    height: clamp(20px, 5vw, 28px);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.favorite-star {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.favorite-star.active {
+    color: #ffd700;
+}
+
+.favorite-star i {
+    font-size: 1.1em;
+}
+
+/* Per-user breakdown table (view 1) - rows are each user's OWN predicted
+   rank slots 1-36, not the actual standings order (see leaderboard.js) */
+.leaderboard-breakdown-table {
+    border-collapse: collapse;
+    font-size: clamp(0.7rem, 3vw, 1rem);
+    /* Fixed layout so every user column is the same width regardless of that
+       user's own team names or display name length - without this, the
+       browser's normal auto layout sizes each column from the widest
+       content anywhere in it, which varies column to column (and
+       competition to competition). */
+    table-layout: fixed;
+}
+
+.leaderboard-breakdown-table .user-col {
+    width: clamp(10em, 28vw, 14em);
+}
+
+.leaderboard-breakdown-table th, .leaderboard-breakdown-table td {
+    padding: clamp(4px, 1.5vw, 8px);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.leaderboard-breakdown-table .frozen-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 2.5em;
+}
+
+.leaderboard-breakdown-table th.frozen-col {
+    z-index: 3;
+}
+
+/* Anchor the header row and the closing Total row so both stay visible
+   while scrolling through the 36 position rows - combined with the
+   left-sticky .frozen-col above, the top-left/bottom-left corner cells end
+   up pinned on both axes at once. */
+.leaderboard-breakdown-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.leaderboard-breakdown-table thead th.frozen-col {
+    z-index: 4;
+}
+
+.leaderboard-breakdown-table .breakdown-total-row td {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    font-weight: bold;
+}
+
+.leaderboard-breakdown-table .breakdown-total-row td.frozen-col {
+    z-index: 4;
+}
+
+/* Team (wide) and off-value (narrow) as two distinct, independently
+   centered sub-columns - not an even split - so the off value lands at the
+   same horizontal position on every row regardless of team name length. */
+.breakdown-cell {
+    display: grid;
+    grid-template-columns: 1fr 2.4em;
+    align-items: center;
+    gap: 0.3em;
+}
+
+.breakdown-team {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.4em;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.breakdown-team img {
+    height: clamp(16px, 5vw, 22px);
+    flex-shrink: 0;
+}
+
+.breakdown-team span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.breakdown-off {
+    font-size: 0.9em;
+    opacity: 0.85;
+    text-align: center;
+}
+
+/* Drill-down modal */
+.drilldown-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(90vw, 700px);
+    max-height: 85vh;
+    background-color: #0230f7; /* Overridden per-competition by drilldown.js callers */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.drilldown-modal[hidden] {
+    display: none;
+}
+
+.drilldown-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: clamp(10px, 3vw, 16px);
+    flex-shrink: 0;
+    gap: 0.5em;
+}
+
+.drilldown-modal-header .leaderboard-user-chip {
+    cursor: default;
+}
+
+.drilldown-modal-body {
+    overflow-y: auto;
+    padding: 0 clamp(10px, 3vw, 16px) clamp(10px, 3vw, 16px);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(10px, 3vw, 16px);
+}
+
+.drilldown-modal-body h3 {
+    margin: 0 0 0.5em;
+    font-size: 1em;
+}
+
+.drilldown-standings-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: clamp(0.7rem, 3vw, 0.95rem);
+}
+
+.drilldown-standings-table th, .drilldown-standings-table td {
+    padding: clamp(3px, 1.5vw, 6px);
+    text-align: center;
+}
+
+.drilldown-standings-table img {
+    width: clamp(16px, 5vw, 24px);
+    height: clamp(16px, 5vw, 24px);
+}
+
+#drilldown-matches .matchday {
+    margin-bottom: clamp(10px, 3vw, 16px);
+}
+
+/* No team-name text in these cards (see drilldown.js) - keep the score
+   input pinned next to the center divider like the predicting page's own
+   layout, but center the logo within the leftover space instead of pinning
+   it to the outer edge (which left a gap where the name used to sit). */
+#drilldown-matches .home,
+#drilldown-matches .away {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    justify-items: center;
+    gap: clamp(4px, 2vw, 10px);
+}
+
+#drilldown-matches .away {
+    grid-template-columns: auto 1fr;
+}
+
+#drilldown-matches .home img,
+#drilldown-matches .away img {
+    margin: 0;
 }
 
 /* Notification */

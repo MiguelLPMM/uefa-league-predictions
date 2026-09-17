@@ -27,9 +27,11 @@ export async function getCurrentCompetitionSeason(competition) {
 export async function getMatchesCache(competition, seasonYear) {
     const { data, error } = await supabaseClient
         .from('matches_cache')
-        .select('id, status, home_team_id, home_team_name, home_team_logo, away_team_id, away_team_name, away_team_logo, home_score, away_score')
+        .select('id, status, matchday_seq, kickoff_at, home_team_id, home_team_name, home_team_logo, away_team_id, away_team_name, away_team_logo, home_score, away_score')
         .eq('competition', competition)
-        .eq('season_year', seasonYear);
+        .eq('season_year', seasonYear)
+        .order('matchday_seq', { ascending: true })
+        .order('kickoff_at', { ascending: true });
     if (error) throw error;
     return data || [];
 }

@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_VERSION = 'v6';
+const CACHE_VERSION = 'v7';
 const SHELL_CACHE = `uefa-predictions-shell-${CACHE_VERSION}`;
 const API_CACHE = `uefa-predictions-api-${CACHE_VERSION}`;
 
@@ -20,8 +20,10 @@ const SHELL_ASSETS = [
     '/js/nav.js',
     '/js/notify.js',
     '/js/scoring.js',
+    '/js/drilldown.js',
     '/js/api/predictions.js',
     '/js/api/leaderboard.js',
+    '/js/api/favorites.js',
     '/js/supabaseClient.js',
     '/vendor/supabase.js',
     '/manifest.json',
