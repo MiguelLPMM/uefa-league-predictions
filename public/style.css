@@ -444,6 +444,137 @@ input[type="text"]::placeholder {
     border-radius: 5px;
 }
 
+/* Hamburger sidebar (shared across every page) */
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 900;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: clamp(220px, 70vw, 300px);
+    background-color: #0230f7; /* Overridden per-competition by theme.js */
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.4);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 950;
+    display: flex;
+    flex-direction: column;
+    padding: 1em;
+    box-sizing: border-box;
+}
+
+.sidebar.open {
+    transform: translateX(0);
+}
+
+.sidebar-close {
+    align-self: flex-end;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 5px;
+    display: flex;
+}
+
+.sidebar-close:hover {
+    background-color: #0a0a61;
+}
+
+.sidebar-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    margin-top: 1em;
+}
+
+.sidebar-links a {
+    color: white;
+    text-decoration: none;
+    padding: 0.6em 0.8em;
+    border-radius: 5px;
+    font-size: 1.1em;
+}
+
+.sidebar-links a:hover,
+.sidebar-links a.active {
+    background-color: #0a0a61;
+}
+
+.sidebar-account {
+    margin-top: auto;
+    padding-top: 1em;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-account-btn {
+    background-color: transparent;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    padding: 0.5em 0.8em;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    width: 100%;
+    font-size: 0.95em;
+}
+
+/* Author-stylesheet `display` rules always beat the browser's built-in
+   `[hidden] { display: none }` (it comes from the lower-priority user-agent
+   stylesheet), so anywhere JS toggles the `hidden` attribute on an element
+   that also has a `display` set here needs an explicit override back to none. */
+.sidebar-account-btn[hidden],
+.sidebar-user[hidden],
+.page-placeholder[hidden] {
+    display: none;
+}
+
+.sidebar-account-btn:hover {
+    background-color: #0a0a61;
+}
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex-wrap: wrap;
+}
+
+.sidebar-user img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.sidebar-user span {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Simple centered placeholder content (leaderboard/admin pages, before their
+   real views are built in later phases) */
+.page-placeholder {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(20px, 6vw, 60px);
+    font-size: clamp(1rem, 0.8rem + 1vw, 1.3rem);
+    color: white;
+}
+
 /* Notification */
 .notification {
     display: none;                              /* Initially hidden */

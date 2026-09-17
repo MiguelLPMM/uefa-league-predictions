@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UEFA League Predictions</title>
+    <title>UEFA League Predictions — Leaderboard</title>
     <link rel="icon" href="assets/ucl.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
 
     <script src="vendor/supabase.js"></script>  <!-- Vendored Supabase client library (UMD, sets window.supabase) -->
-    <script type="module" src="js/main.js"></script>  <!-- Pulls in supabaseClient/theme/compSelector/auth/nav via imports -->
+    <script type="module" src="js/leaderboard.js"></script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 
@@ -39,14 +39,7 @@
         <div class="center">
             <h1 id="header"><span class="title-part1">UEFA Champions</span> <span class="title-part2">League Predictions</span></h1>
         </div>
-        <div class="right">
-            <button id="clear-predictions" class="copy-btn">
-                <i class="material-icons">refresh</i>
-            </button>
-            <button id="copy-standings" class="copy-btn">
-                <i class="material-icons">content_copy</i>
-            </button>
-        </div>
+        <div class="right"></div>
     </nav>
     <div id="sidebar-overlay" class="sidebar-overlay" hidden></div>
     <aside id="sidebar" class="sidebar" aria-hidden="true">
@@ -72,40 +65,10 @@
         </div>
     </aside>
     <div class="container">
-        <div id="table-panel">
-            <div class="panel-header">
-                <button id="toggle-table" class="panel-toggle" title="Collapse standings" aria-expanded="true" aria-label="Collapse standings">
-                    <i class="material-icons">chevron_left</i>
-                </button>
-            </div>
-            <div id="league-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th></th> <!-- Position -->
-                            <th></th> <!-- Logo -->
-                            <th></th> <!-- Team Name -->
-                            <th>W</th>
-                            <th>D</th>
-                            <th>L</th>
-                            <th>GF</th>
-                            <th>GA</th>
-                            <th>GD</th>
-                            <th>Points</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- League table will be dynamically updated here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="matches">
-            <!-- Matches will be dynamically updated here -->
+        <div id="leaderboard-placeholder" class="page-placeholder">
+            <p>Leaderboard views are coming in a later phase.</p>
         </div>
     </div>
-    <div id="loading-indicator">Loading matches...</div>
     <div id="notification" class="notification"></div>
 </body>
 </html>

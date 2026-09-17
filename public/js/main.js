@@ -1,8 +1,10 @@
 import { computeStandings } from './standings.js';
+import { applySharedTheme } from './theme.js';
+import { getSelectedComp, syncUrlToSelectedComp, wireCompButtons, linkWithComp } from './compSelector.js';
+import { setupNav } from './nav.js';
+import { showNotification } from './notify.js';
 
-let notificationTimeout; // Variable to store the timeout ID for the notification
-
-let currentComp = 'ucl'; // Default competition
+let currentComp = getSelectedComp(); // Default competition
 
 // Lightweight per-match metadata for the currently loaded competition, used to
 // rebuild the standings table from scratch on every score change. Real
@@ -10,38 +12,28 @@ let currentComp = 'ucl'; // Default competition
 // inputs each time the table re-renders.
 let currentMatches = [];
 
-const colorSchemes = {
-    ucl: {
-        background: '#000040',
-        nav: '#0230f7',         // copy button background, notification
-        top8: '#17177a',
-        match: '#0a0a61',       // comp/copy button hover, top 24, input background
-        score: '#00eeff',
-        finished: '#606098',
-        icon: 'assets/ucl.ico',
-        name: 'Champions'
-    },
-    uel: {
-        background: 'black',
-        nav: 'black',
-        top8: '#3a3a3c',
-        match: '#1c1c1e',
-        score: '#ff6900',
-        finished: '#555556',
-        icon: 'assets/uel.ico',
-        name: 'Europa'
-    },
-    uecl: {
-        background: 'black',
-        nav: 'black',
-        top8: '#3a3a3c',
-        match: '#1c1c1e',
-        score: '#00be14',
-        finished: '#555556',
-        icon: 'assets/uecl.ico',
-        name: 'Conference'
+// Captured once, before compSelector's own URL sync runs, so the
+// default-landing-page redirect (see maybeRedirectToDefaultLandingPage) only
+// ever applies to a genuinely bare visit (no query string at all) and never
+// fights an explicit navigation, e.g. from the sidebar, which always carries
+// its own ?comp=.
+const initialQueryString = window.location.search;
+let hasCheckedDefaultLanding = false;
+
+// Once the season is underway, index.html isn't the useful default landing
+// page anymore — send a bare/fresh visit straight to the leaderboard instead.
+// Returns true if it triggered a redirect (caller should stop rendering).
+function maybeRedirectToDefaultLandingPage(matches) {
+    if (hasCheckedDefaultLanding) return false;
+    hasCheckedDefaultLanding = true;
+    if (initialQueryString !== '') return false; // explicit navigation - respect it
+    const seasonUnderway = matches.some((m) => m.status === 'FINISHED');
+    if (seasonUnderway) {
+        window.location.replace(linkWithComp('leaderboard.html'));
+        return true;
     }
-};
+    return false;
+}
 
 // Functions to persist and restore predictions in localStorage, keyed per competition
 function getPredictionsStorageKey(comp) {
@@ -89,6 +81,11 @@ async function fetchMatches(comp) {
     const savedPredictions = loadPredictions(comp); // Restore any previously saved predictions
     const response = await fetch('/api/matches/' + comp);
     const matches = await response.json();
+
+    if (maybeRedirectToDefaultLandingPage(matches)) {
+        return; // navigating away to the leaderboard, no point rendering this page
+    }
+
     const matchesDiv = document.getElementById('matches');
     matchesDiv.innerHTML = '';  // Clear previous matches
 
@@ -210,14 +207,11 @@ async function fetchMatches(comp) {
 
 // Function to update the color scheme
 function updateColorScheme() {
-    const colors = colorSchemes[currentComp] || colorSchemes.ucl; // Default to ucl if comp is not found
+    // Body background, nav bar, competition buttons, favicon, and title are
+    // shared by every page — handled once in theme.js.
+    const colors = applySharedTheme(currentComp);
 
-    // Apply color scheme to the body
-    document.body.style.backgroundColor = colors.background;
-
-    // Apply color scheme to navigation bar
-    const navBar = document.querySelector('nav');
-    navBar.style.backgroundColor = colors.nav;
+    // Everything below is specific to this (predicting) page.
 
     // Apply color scheme to top 8 teams
     const top8Rows = document.querySelectorAll('.top-8');
@@ -250,18 +244,6 @@ function updateColorScheme() {
         input.style.borderColor = colors.finished;
     });
 
-    // Apply color scheme to competition buttons
-    const compButtons = document.querySelectorAll('.comp-button');
-    compButtons.forEach(button => {
-        button.style.backgroundColor = colors.nav;
-        button.addEventListener('mouseover', () => {
-            button.style.backgroundColor = colors.match;
-        });
-        button.addEventListener('mouseout', () => {
-            button.style.backgroundColor = colors.nav;
-        });
-    });
-
     // Apply color scheme to copy standings button
     const copyStandingsButton = document.getElementById('copy-standings');
     copyStandingsButton.style.backgroundColor = colors.nav;
@@ -281,31 +263,6 @@ function updateColorScheme() {
     clearPredictionsButton.addEventListener('mouseout', () => {
         clearPredictionsButton.style.backgroundColor = colors.nav;
     });
-
-    // Apply color scheme to notification
-    const notification = document.getElementById('notification');
-    notification.style.backgroundColor = colors.nav;
-
-    // Update the favicon
-    const favicon = document.querySelector('link[rel="icon"]');
-    favicon.href = colors.icon;
-
-    // Update the header (split across two spans so mobile can force an even
-    // "UEFA <Competition>" / "League Predictions" line break instead of
-    // wrapping wherever the text happens to run out of room)
-    const header = document.getElementById('header');
-    header.innerHTML = '';
-    const titlePart1 = document.createElement('span');
-    titlePart1.className = 'title-part1';
-    titlePart1.textContent = `UEFA ${colors.name}`;
-    const titlePart2 = document.createElement('span');
-    titlePart2.className = 'title-part2';
-    titlePart2.textContent = 'League Predictions';
-    header.append(titlePart1, ' ', titlePart2);
-
-    // Update the title
-    document.title = `UEFA ${colors.name} League Predictions`;
-
 }
 
 // Reads the goals for one match: fixed real score if finished, otherwise
@@ -405,23 +362,6 @@ function clearPredictions() {
     showNotification('Predictions cleared!');
 }
 
-// Function to show a notification message
-function showNotification(message) {
-    const notification = document.getElementById('notification');
-    notification.textContent = message;
-    notification.style.display = 'block';
-
-    // Clear any existing timeout
-    if (notificationTimeout) {
-        clearTimeout(notificationTimeout);
-    }
-
-    // Hide the notification after 3 seconds
-    notificationTimeout = setTimeout(() => {
-        notification.style.display = 'none';
-    }, 3000);
-}
-
 // Function to handle keydown events for score inputs
 function handleScoreInputKeydown(event) {
     const input = event.target;
@@ -476,14 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('copy-standings').addEventListener('click', copyStandingsToClipboard);
     document.getElementById('clear-predictions').addEventListener('click', clearPredictions);
 
-    const compButtons = document.querySelectorAll('.comp-button');
-    compButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const arg = button.getAttribute('data-arg');
-            fetchMatches(arg);
-        });
-    });
+    wireCompButtons();
+    window.addEventListener('comp-changed', (event) => fetchMatches(event.detail.comp));
 
+    setupNav();
     setupTablePanelToggle();
 });
 
@@ -534,8 +470,8 @@ window.onload = () => {
     document.getElementById('loading-indicator').style.display = 'block';
     document.getElementById('matches').style.display = 'none';
 
-    // Fetch matches for the default competition
-    fetchMatches('ucl');
+    // Fetch matches for the selected (or last-used, or default) competition
+    fetchMatches(syncUrlToSelectedComp());
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js');

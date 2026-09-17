@@ -1,14 +1,24 @@
 // sw.js
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v4';
 const SHELL_CACHE = `uefa-predictions-shell-${CACHE_VERSION}`;
 const API_CACHE = `uefa-predictions-api-${CACHE_VERSION}`;
 
 const SHELL_ASSETS = [
     '/',
     '/index.html',
+    '/leaderboard.html',
+    '/admin.html',
     '/style.css',
     '/js/main.js',
+    '/js/leaderboard.js',
+    '/js/admin.js',
     '/js/standings.js',
+    '/js/theme.js',
+    '/js/compSelector.js',
+    '/js/auth.js',
+    '/js/adminConfig.js',
+    '/js/nav.js',
+    '/js/notify.js',
     '/js/supabaseClient.js',
     '/vendor/supabase.js',
     '/manifest.json',
