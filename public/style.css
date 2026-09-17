@@ -98,6 +98,10 @@ nav h1 {
     background-color: #0a0a61; /* Darker shade on hover */
 }
 
+.copy-btn[hidden] {
+    display: none;
+}
+
 /* Container for main content */
 .container {
     display: flex;

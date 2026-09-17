@@ -3,8 +3,17 @@ import { applySharedTheme } from './theme.js';
 import { getSelectedComp, syncUrlToSelectedComp, wireCompButtons, linkWithComp } from './compSelector.js';
 import { setupNav } from './nav.js';
 import { showNotification } from './notify.js';
+import { getCurrentUser, onAuthStateChange } from './auth.js';
+import { saveMatchPredictionsBatch, loadOfficialPredictions, getMyEntry, isDeadlinePassed } from './api/predictions.js';
 
 let currentComp = getSelectedComp(); // Default competition
+
+// The UEFA season year (e.g. 2027 for the 26/27 season) that the currently
+// loaded matches belong to — read straight off the fetched match data
+// (every match already carries its own seasonYear) rather than recomputing
+// the same September-rollover rule client-side and risking it drifting from
+// api/_lib/uefaMatches.js's getSeasonYear().
+let currentSeasonYear = null;
 
 // Lightweight per-match metadata for the currently loaded competition, used to
 // rebuild the standings table from scratch on every score change. Real
@@ -85,6 +94,8 @@ async function fetchMatches(comp) {
     if (maybeRedirectToDefaultLandingPage(matches)) {
         return; // navigating away to the leaderboard, no point rendering this page
     }
+
+    currentSeasonYear = matches.length > 0 ? Number(matches[0].seasonYear) : null;
 
     const matchesDiv = document.getElementById('matches');
     matchesDiv.innerHTML = '';  // Clear previous matches
@@ -203,6 +214,149 @@ async function fetchMatches(comp) {
     document.getElementById('loading-indicator').style.display = 'none';
     document.getElementById('matches').style.display = 'block';
     document.getElementById('league-table').style.display = 'block';
+
+    checkLateEntry();
+}
+
+// Builds the { match_id, home, away } payload for every loaded match, using
+// whatever's currently displayed (real score for finished matches, current
+// input value otherwise) — the freeze rule server-side decides what actually
+// gets accepted, so the client doesn't need to pre-filter anything.
+function buildPredictionsPayload() {
+    return currentMatches.map((match) => {
+        const { home, away } = readGoalsForMatch(match);
+        return { match_id: match.id, home, away };
+    });
+}
+
+// Copies official Supabase-saved predictions back down over the local
+// working copy, for non-finished matches only — a finished match's input is
+// disabled and always shows the real score regardless of what was saved.
+function applyLoadedPredictions(officialRows) {
+    officialRows.forEach(({ match_id, predicted_home, predicted_away }) => {
+        const match = currentMatches.find((m) => m.id === match_id);
+        if (!match || match.finished) return;
+        const homeInput = document.getElementById(`home-${match_id}`);
+        const awayInput = document.getElementById(`away-${match_id}`);
+        if (homeInput) homeInput.value = String(predicted_home);
+        if (awayInput) awayInput.value = String(predicted_away);
+        savePrediction(currentComp, match_id, String(predicted_home), String(predicted_away));
+    });
+    renderLeagueTable();
+}
+
+async function handleSavePredictions() {
+    const user = await getCurrentUser();
+    if (!user) {
+        showNotification('Sign in to save your official predictions');
+        return;
+    }
+    if (!currentSeasonYear) {
+        showNotification('Matches are still loading — try again in a moment');
+        return;
+    }
+
+    try {
+        // A first-ever save made after the deadline creates a late entry
+        // that locks immediately (see save_match_predictions_batch) - warn
+        // before committing to that, the same way clearPredictions() warns
+        // before an irreversible reset.
+        const [existingEntry, deadlinePassed] = await Promise.all([
+            getMyEntry(user.id, currentComp, currentSeasonYear),
+            isDeadlinePassed(currentComp, currentSeasonYear),
+        ]);
+        if (!existingEntry && deadlinePassed) {
+            const confirmed = confirm(
+                'This competition has already started. Saving now creates a late entry that locks immediately — you will not be able to change it again. Continue?'
+            );
+            if (!confirmed) return;
+        }
+
+        const result = await saveMatchPredictionsBatch(currentComp, currentSeasonYear, buildPredictionsPayload());
+        const savedCount = (result && result.saved ? result.saved : []).length;
+
+        if (result && result.locked) {
+            // The deadline has passed and this entry (on-time or late) was
+            // already locked before this call - a no-op by design, not an error.
+            showNotification('The deadline has passed — this entry is locked and can no longer be changed');
+        } else {
+            showNotification(`Saved ${savedCount} match${savedCount === 1 ? '' : 'es'}!`);
+        }
+        checkLateEntry();
+    } catch (err) {
+        console.error('Failed to save predictions:', err);
+        showNotification('Failed to save predictions — please try again');
+    }
+}
+
+async function handleLoadPredictions() {
+    const user = await getCurrentUser();
+    if (!user) {
+        showNotification('Sign in to load your saved predictions');
+        return;
+    }
+    if (!currentSeasonYear) {
+        return;
+    }
+    const confirmed = confirm('Load your saved predictions? This will overwrite any unsaved local changes for this competition.');
+    if (!confirmed) {
+        return;
+    }
+    try {
+        const rows = await loadOfficialPredictions(currentComp, currentSeasonYear);
+        if (!rows || rows.length === 0) {
+            showNotification('No saved predictions found for this competition yet');
+            return;
+        }
+        applyLoadedPredictions(rows);
+        showNotification('Loaded your saved predictions');
+    } catch (err) {
+        console.error('Failed to load predictions:', err);
+        showNotification('Failed to load predictions — please try again');
+    }
+}
+
+// Lets a late-entry notice fire at most once ever per competition+season
+// (persisted, so a page reload doesn't repeat it — only an in-memory flag
+// would reset on every reload), rather than every time fetchMatches()
+// re-runs for a competition the user has already been told about.
+function hasShownLateEntryNotice(key) {
+    try {
+        return localStorage.getItem(`lateEntryNoticeShown_${key}`) === 'true';
+    } catch (err) {
+        return false;
+    }
+}
+function markLateEntryNoticeShown(key) {
+    try {
+        localStorage.setItem(`lateEntryNoticeShown_${key}`, 'true');
+    } catch (err) {
+        console.error('Failed to save late-entry notice state:', err);
+    }
+}
+
+// Toasts a one-time "late entry" notice for the signed-in user's entries row
+// on the current competition+season (created on their first official save —
+// see save_match_predictions_batch). A toast rather than a persistent banner:
+// it's informational, not something that needs to stay on screen, and it
+// naturally avoids any stale/mismatched state when switching competitions.
+async function checkLateEntry() {
+    const user = await getCurrentUser();
+    if (!user || !currentSeasonYear) return;
+
+    const noticeKey = `${currentComp}_${currentSeasonYear}`;
+    if (hasShownLateEntryNotice(noticeKey)) return;
+
+    try {
+        const entry = await getMyEntry(user.id, currentComp, currentSeasonYear);
+        if (entry && entry.is_late) {
+            markLateEntryNoticeShown(noticeKey);
+            const weeks = entry.late_weeks;
+            showNotification(`Late entry — ${weeks} week${weeks === 1 ? '' : 's'} behind`);
+        }
+    } catch (err) {
+        console.error('Failed to check entry status:', err);
+    }
 }
 
 // Function to update the color scheme
@@ -262,6 +416,18 @@ function updateColorScheme() {
     });
     clearPredictionsButton.addEventListener('mouseout', () => {
         clearPredictionsButton.style.backgroundColor = colors.nav;
+    });
+
+    // Apply color scheme to the save/load official predictions buttons
+    [document.getElementById('load-predictions'), document.getElementById('save-predictions')].forEach((button) => {
+        if (!button) return;
+        button.style.backgroundColor = colors.nav;
+        button.addEventListener('mouseover', () => {
+            button.style.backgroundColor = colors.match;
+        });
+        button.addEventListener('mouseout', () => {
+            button.style.backgroundColor = colors.nav;
+        });
     });
 }
 
@@ -415,12 +581,25 @@ function moveFocus(currentInput, direction) {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('copy-standings').addEventListener('click', copyStandingsToClipboard);
     document.getElementById('clear-predictions').addEventListener('click', clearPredictions);
+    document.getElementById('save-predictions').addEventListener('click', handleSavePredictions);
+    document.getElementById('load-predictions').addEventListener('click', handleLoadPredictions);
 
     wireCompButtons();
     window.addEventListener('comp-changed', (event) => fetchMatches(event.detail.comp));
 
     setupNav();
     setupTablePanelToggle();
+
+    // Save/Load only make sense once signed in - hide them otherwise, and
+    // re-check the late-entry notice whenever sign-in state changes (e.g.
+    // signing in while already on this page), not just on initial load.
+    onAuthStateChange((user) => {
+        const loadButton = document.getElementById('load-predictions');
+        const saveButton = document.getElementById('save-predictions');
+        if (loadButton) loadButton.hidden = !user;
+        if (saveButton) saveButton.hidden = !user;
+        checkLateEntry();
+    });
 });
 
 // Lets the user collapse the standings panel so the predictions area can use the freed-up space
