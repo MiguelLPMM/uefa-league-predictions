@@ -114,7 +114,12 @@ function buildUserChip(result, { withAvatar }) {
         chip.appendChild(badge);
     }
 
-    if (!isSelf) {
+    // Guest (unclaimed) entries have no real user_id, and favorites.
+    // favorite_user_id is a not-null FK to auth.users - there's nothing to
+    // favorite them by yet. They become favoritable normally the moment
+    // someone claims them (see the admin merge flow), since that's what
+    // fills in a real user_id.
+    if (!isSelf && result.entry.user_id != null) {
         const isFavorite = session && session.favoriteIds.includes(result.entry.user_id);
         const star = document.createElement('button');
         star.type = 'button';

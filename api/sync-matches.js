@@ -78,9 +78,16 @@ module.exports = async (req, res) => {
 
     const rows = [];
     const failures = [];
+    // Keeps the auto-conclude check below from re-fetching the exact same
+    // season a second time - it's the same UEFA API call either way, so a
+    // competition whose current season hasn't concluded yet (the common,
+    // steady-state case on every run) would otherwise cost two external
+    // fetches per cron trigger instead of one.
+    const currentMatchesByComp = new Map();
     currentResults.forEach((result, index) => {
         const compKey = compKeys[index];
         if (result.status === 'fulfilled') {
+            currentMatchesByComp.set(compKey, result.value);
             result.value.forEach((match) => rows.push(toCacheRow(match, compKey)));
         } else {
             failures.push(compKey);
@@ -112,9 +119,33 @@ module.exports = async (req, res) => {
             (season) => season.status !== 'concluded' || !hasStandings.has(`${season.competition}:${season.season_year}`)
         );
 
-        for (const season of seasonsToCheck) {
+        // Fetches run in parallel (this is what api/matches/[comp].js's own
+        // sync above already does for the same reason) - on the very first
+        // run after a migration, seasonsToCheck can include both historical
+        // seasons across all 3 competitions at once, and fetching those
+        // sequentially would multiply this function's wall-clock time by
+        // however many are pending, risking a serverless timeout. The RPC
+        // writes that follow stay sequential - they're cheap, and there's no
+        // benefit to parallelizing database writes here.
+        const seasonMatchResults = await Promise.allSettled(
+            seasonsToCheck.map((season) => {
+                const isCurrentSeason = season.season_year === getSeasonYear() && currentMatchesByComp.has(season.competition);
+                return isCurrentSeason
+                    ? Promise.resolve(currentMatchesByComp.get(season.competition))
+                    : fetchCompetitionMatchesForSeason(season.competition, season.season_year);
+            })
+        );
+
+        for (let i = 0; i < seasonsToCheck.length; i++) {
+            const season = seasonsToCheck[i];
+            const matchResult = seasonMatchResults[i];
+            if (matchResult.status !== 'fulfilled') {
+                console.error(`Failed to fetch ${season.competition} ${season.season_year} for auto-conclude:`, matchResult.reason);
+                continue;
+            }
+
             try {
-                const matches = await fetchCompetitionMatchesForSeason(season.competition, season.season_year);
+                const matches = matchResult.value;
                 if (matches.length === 0 || !matches.every((match) => match.status === 'FINISHED')) continue;
 
                 const standings = computeStandings(matches.map(toStandingsInput)).map((team) => ({
