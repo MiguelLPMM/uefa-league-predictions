@@ -137,10 +137,16 @@ async function fetchMatches(comp) {
                 awayResult = `value="${match.score.total.away}"`;
                 inputClass = 'score-input-finished';
             } else {
-                // Restore a saved prediction for this match, if one exists
+                // Restore a saved prediction for this match, if one exists.
+                // Each side is restored independently so a half-filled
+                // prediction (e.g. only the home score typed so far) keeps
+                // showing the greyed-out "0" placeholder on the untouched
+                // side, instead of losing it to a blank value="".
                 const saved = savedPredictions[match.id];
-                if (saved) {
+                if (saved && saved.home !== '') {
                     homeResult = `value="${saved.home}"`;
+                }
+                if (saved && saved.away !== '') {
                     awayResult = `value="${saved.away}"`;
                 }
             }
