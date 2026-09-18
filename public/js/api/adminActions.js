@@ -1,6 +1,8 @@
-// Thin wrappers around the admin-only Supabase RPCs. Every one of these is
-// re-checked server-side against the hardcoded admin user id (see the SQL
-// migrations) - the client-side admin gate (adminConfig.js) is cosmetic only.
+// Thin wrappers around the admin-only Supabase RPCs (each one re-checked
+// server-side against the hardcoded admin user id - see the SQL migrations,
+// the client-side admin gate in adminConfig.js is cosmetic only), plus a
+// couple of admin-page-only reads that don't need an RPC (profiles is
+// already publicly readable).
 import { supabaseClient } from '../supabaseClient.js';
 
 // rankings: array of { team_id, team_name, team_logo_url, predicted_rank },
@@ -49,6 +51,36 @@ export async function findUserByEmail(email) {
     const row = (data || [])[0];
     if (!row) return null;
     return { userId: row.user_id, displayName: row.display_name, avatarUrl: row.avatar_url };
+}
+
+// The real login name is never overwritten automatically - only display_name
+// is, either by a merge (inherits the guest's name) or these two below.
+export async function renameProfile(userId, displayName) {
+    const { error } = await supabaseClient.rpc('admin_rename_profile', {
+        p_user_id: userId,
+        p_display_name: displayName,
+    });
+    if (error) throw error;
+}
+
+export async function renameGuest(guestKey, displayName) {
+    const { error } = await supabaseClient.rpc('admin_rename_guest', {
+        p_guest_key: guestKey,
+        p_display_name: displayName,
+    });
+    if (error) throw error;
+}
+
+// Every real account's current display name, for the "change a display
+// name" search below - combined client-side with the unclaimed guest
+// identities (listUnclaimedGuestIdentities) into one searchable list.
+export async function listAllProfiles() {
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id, display_name')
+        .order('display_name', { ascending: true });
+    if (error) throw error;
+    return (data || []).map((row) => ({ userId: row.id, displayName: row.display_name }));
 }
 
 export async function listPendingGuestClaimRequests() {

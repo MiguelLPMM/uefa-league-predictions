@@ -20,6 +20,9 @@ import {
     reviewGuestClaim,
     findUserByEmail,
     listPendingGuestClaimRequests,
+    renameProfile,
+    renameGuest,
+    listAllProfiles,
 } from './api/adminActions.js';
 import { listUnclaimedGuestIdentities } from './api/guestClaims.js';
 
@@ -41,6 +44,12 @@ let currentRoster = [];
 // that was already used for them (see wireGuestImportForm's key input
 // listener below) instead of the admin having to remember/retype it.
 let guestKeyToDisplayName = new Map();
+
+// The "change a display name" search's option label -> what to rename.
+// Keyed by the exact composite label shown in its datalist (plain display
+// names alone aren't guaranteed unique, hence the "(account)"/"(guestkey)"
+// suffix - see refreshRenameOptions).
+let renameOptionsByLabel = new Map();
 
 function seasonLabel(seasonYear) {
     return `${seasonYear - 1}/${String(seasonYear).slice(-2)}`;
@@ -356,6 +365,83 @@ function wireManualMergeForm() {
     });
 }
 
+// Populates the "change a display name" search's datalist from both real
+// accounts and still-unclaimed guest identities - a plain display name isn't
+// guaranteed unique (two different real accounts could coincidentally share
+// one), so each option's label disambiguates with what it actually targets.
+async function refreshRenameOptions() {
+    const datalist = document.getElementById('rename-options');
+    try {
+        const [profiles, identities] = await Promise.all([listAllProfiles(), listUnclaimedGuestIdentities()]);
+        renameOptionsByLabel = new Map();
+        datalist.innerHTML = '';
+
+        profiles.forEach((profile) => {
+            if (!profile.displayName) return;
+            const label = `${profile.displayName} (account)`;
+            renameOptionsByLabel.set(label, { kind: 'user', target: profile.userId, currentName: profile.displayName });
+            const option = document.createElement('option');
+            option.value = label;
+            datalist.appendChild(option);
+        });
+
+        identities.forEach((identity) => {
+            const label = `${identity.displayName} (${identity.guestKey})`;
+            renameOptionsByLabel.set(label, { kind: 'guest', target: identity.guestKey, currentName: identity.displayName });
+            const option = document.createElement('option');
+            option.value = label;
+            datalist.appendChild(option);
+        });
+    } catch (err) {
+        console.error('Failed to load rename options:', err);
+    }
+}
+
+function wireRenameForm() {
+    // Same "existing option -> autofill the current value" pattern as the
+    // guest-import form's key field, so the admin can see what they're
+    // about to overwrite before typing the new name.
+    document.getElementById('rename-search').addEventListener('input', (event) => {
+        const match = renameOptionsByLabel.get(event.target.value);
+        if (match) {
+            document.getElementById('rename-new-name').value = match.currentName;
+        }
+    });
+
+    const form = document.getElementById('rename-form');
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const match = renameOptionsByLabel.get(document.getElementById('rename-search').value);
+        const newName = document.getElementById('rename-new-name').value.trim();
+
+        if (!match) {
+            showNotification('Pick a valid option from the list');
+            return;
+        }
+        if (!newName) {
+            showNotification('Enter a display name');
+            return;
+        }
+
+        try {
+            if (match.kind === 'user') {
+                await renameProfile(match.target, newName);
+            } else {
+                await renameGuest(match.target, newName);
+            }
+            showNotification(`Renamed to "${newName}"`);
+            form.reset();
+            refreshRenameOptions();
+            // Both surfaces can show a guest's/requester's display name.
+            refreshGuestKeyOptions();
+            renderClaimRequests();
+        } catch (err) {
+            console.error('Failed to rename:', err);
+            showNotification(err.message || 'Failed to rename — please try again');
+        }
+    });
+}
+
 let hasInitializedAdminContent = false;
 
 async function refreshSeasonAndRoster(comp) {
@@ -370,9 +456,11 @@ function initAdminContentOnce() {
 
     refreshSeasonAndRoster(getSelectedComp());
     refreshGuestKeyOptions();
+    refreshRenameOptions();
 
     wireGuestImportForm();
     wireManualMergeForm();
+    wireRenameForm();
     renderClaimRequests();
 
     window.addEventListener('comp-changed', (event) => refreshSeasonAndRoster(event.detail.comp));

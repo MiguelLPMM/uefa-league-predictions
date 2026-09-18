@@ -120,6 +120,21 @@
                 </form>
                 <div id="manual-merge-result"></div>
             </section>
+
+            <section class="admin-section">
+                <h2>Change a display name</h2>
+                <p class="admin-hint">Works on both a real account (after they've signed in at least once) and a still-unclaimed guest identity. A guest's display name carries over automatically once they're merged, so only rename a guest here if they'll never be merged.</p>
+                <form id="rename-form" class="admin-form">
+                    <label for="rename-search">Find by current display name</label>
+                    <input type="text" id="rename-search" list="rename-options" placeholder="Start typing a name…" required>
+                    <datalist id="rename-options"></datalist>
+
+                    <label for="rename-new-name">New display name</label>
+                    <input type="text" id="rename-new-name" required>
+
+                    <button type="submit" class="sidebar-account-btn">Rename</button>
+                </form>
+            </section>
         </div>
     </div>
     <div id="notification" class="notification"></div>
