@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_VERSION = 'v9';
+const CACHE_VERSION = 'v10';
 const SHELL_CACHE = `uefa-predictions-shell-${CACHE_VERSION}`;
 const API_CACHE = `uefa-predictions-api-${CACHE_VERSION}`;
 
@@ -8,10 +8,12 @@ const SHELL_ASSETS = [
     '/index.html',
     '/leaderboard.html',
     '/admin.html',
+    '/profile.html',
     '/style.css',
     '/js/main.js',
     '/js/leaderboard.js',
     '/js/admin.js',
+    '/js/profile.js',
     '/js/standings.js',
     '/js/theme.js',
     '/js/compSelector.js',

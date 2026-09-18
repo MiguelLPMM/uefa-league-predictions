@@ -94,10 +94,6 @@ nav h1 {
     justify-content: center;
 }
 
-.copy-btn:hover {
-    background-color: #0a0a61; /* Darker shade on hover */
-}
-
 .copy-btn[hidden] {
     display: none;
 }
@@ -143,10 +139,6 @@ nav h1 {
     padding: 4px;
     border-radius: 5px;
     flex-shrink: 0;
-}
-
-.panel-toggle:hover {
-    background-color: #0a0a61;
 }
 
 .panel-toggle i {
@@ -488,10 +480,6 @@ input[type="text"]::placeholder {
     display: flex;
 }
 
-.sidebar-close:hover {
-    background-color: #0a0a61;
-}
-
 .sidebar-links {
     display: flex;
     flex-direction: column;
@@ -505,11 +493,7 @@ input[type="text"]::placeholder {
     padding: 0.6em 0.8em;
     border-radius: 5px;
     font-size: 1.1em;
-}
-
-.sidebar-links a:hover,
-.sidebar-links a.active {
-    background-color: #0a0a61;
+    box-sizing: border-box;
 }
 
 .sidebar-account {
@@ -529,6 +513,7 @@ input[type="text"]::placeholder {
     align-items: center;
     gap: 0.5em;
     width: 100%;
+    box-sizing: border-box;
     font-size: 0.95em;
 }
 
@@ -542,15 +527,10 @@ input[type="text"]::placeholder {
     display: none;
 }
 
-.sidebar-account-btn:hover {
-    background-color: #0a0a61;
-}
-
 .sidebar-user {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 0.5em;
-    flex-wrap: wrap;
 }
 
 .sidebar-user img {
@@ -561,9 +541,23 @@ input[type="text"]::placeholder {
 
 .sidebar-user span {
     flex: 1 1 auto;
+    min-width: 0; /* Flex items default to min-width:auto (content size) - without this, ellipsis truncation never kicks in and the row is forced wider than its 100%-width parent */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.sidebar-user-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    color: inherit;
+    text-decoration: none;
+    min-width: 0;
+    padding: 0.5em 0.8em;
+    border-radius: 5px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Simple centered placeholder content (leaderboard/admin pages, before their
@@ -649,6 +643,25 @@ input[type="text"]::placeholder {
     font-family: inherit;
     box-sizing: border-box;
     width: 100%;
+    /* .admin-form is a column flex container - flex items default to
+       min-width:auto, which lets a <select>'s own option text hold it wider
+       than its 100% width (an empty <input> has no such content-driven
+       floor, so it shrank to exactly 100% while selects didn't - hence the
+       mismatched edges). */
+    min-width: 0;
+}
+
+/* The global input[type="text"/"number"] rule (further up) is written for
+   the predicting page's small score boxes - it also centers text and adds a
+   horizontal margin, both of which leaked into these normal form fields
+   since nothing here overrode them: text showed centered instead of left-
+   aligned, and the margin pulled these inputs in from the edges that every
+   other field type (select/textarea) in this form doesn't have. */
+.admin-content input[type="text"],
+.admin-content input[type="email"],
+.admin-content input[type="number"] {
+    text-align: left;
+    margin: 0;
 }
 
 .admin-content textarea {
@@ -749,7 +762,7 @@ input[type="text"]::placeholder {
 }
 
 .view-tab {
-    background-color: #0230f7; /* Overridden per-competition by leaderboard.js */
+    background-color: #0230f7; /* Overridden per-competition by theme.js */
     color: white;
     border: none;
     padding: 0.6em 1.2em;
@@ -899,11 +912,11 @@ input[type="text"]::placeholder {
 
 /* Shared "exact match" highlight - used in the actual-table cells, the
    breakdown view's off values, and the drill-down's predicted table. Not
-   scoped to one table since all 3 reuse it. */
+   scoped to one table since all 3 reuse it. Color is set per-element by the
+   callers below (colors.score) - this is just a bold fallback. */
 .off-bangon {
     font-weight: bold;
-    color: #00eeff; /* Matches the ucl score-input accent; fine as a fixed
-                        "exact match" highlight across every competition */
+    color: #00eeff;
 }
 
 /* Clickable name/avatar/star chip - shared by every view's user
@@ -1067,7 +1080,7 @@ input[type="text"]::placeholder {
     transform: translate(-50%, -50%);
     width: min(90vw, 700px);
     max-height: 85vh;
-    background-color: #0230f7; /* Overridden per-competition by drilldown.js callers */
+    background-color: #0230f7; /* Overridden per-competition by theme.js */
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     border-radius: 5px;
     z-index: 1100;

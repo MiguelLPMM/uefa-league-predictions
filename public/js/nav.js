@@ -13,11 +13,17 @@ import { maybeShowGuestClaimPrompt } from './guestClaimPrompt.js';
 // (undefined = "we don't know yet", distinct from null = "signed out").
 let previousUserId;
 
+// So a later comp-changed event can re-resolve the admin link's href without
+// needing a fresh auth round-trip - see updateAdminLinkVisibility below.
+let latestUser;
+
 function updateNavLinks() {
     const predictionsLink = document.getElementById('nav-predictions');
     const leaderboardLink = document.getElementById('nav-leaderboard');
+    const profileLink = document.getElementById('sidebar-profile-link');
     if (predictionsLink) predictionsLink.href = linkWithComp('index.html');
     if (leaderboardLink) leaderboardLink.href = linkWithComp('leaderboard.html');
+    if (profileLink) profileLink.href = linkWithComp('profile.html');
 
     // Mark whichever link matches the current page as active.
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';
@@ -38,6 +44,7 @@ function updateAdminLinkVisibility(user) {
 }
 
 function updateAccountUI(user) {
+    latestUser = user;
     const signInButton = document.getElementById('sidebar-signin');
     const userBox = document.getElementById('sidebar-user');
     const nameEl = document.getElementById('sidebar-user-name');
@@ -55,6 +62,10 @@ function updateAccountUI(user) {
         if (nameEl) nameEl.textContent = displayName;
         if (avatarEl) {
             if (meta.avatar_url) {
+                // Google's avatar CDN sometimes stalls/fails when it sees a
+                // referrer from a third-party origin - dropping it entirely
+                // is what fixes the intermittent "doesn't load for a while".
+                avatarEl.referrerPolicy = 'no-referrer';
                 avatarEl.src = meta.avatar_url;
                 avatarEl.style.display = '';
             } else {
@@ -128,7 +139,10 @@ export function setupNav() {
     if (signOutButton) signOutButton.addEventListener('click', signOut);
 
     updateNavLinks();
-    window.addEventListener('comp-changed', updateNavLinks);
+    window.addEventListener('comp-changed', () => {
+        updateNavLinks();
+        updateAdminLinkVisibility(latestUser);
+    });
 
     resumeQueuedNotification();
     onAuthStateChange(updateAccountUI);

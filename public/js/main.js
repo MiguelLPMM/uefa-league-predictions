@@ -398,11 +398,16 @@ function updateColorScheme() {
         input.style.borderColor = colors.finished;
     });
 
+    // These buttons keep the original `match` hover on every competition -
+    // only the sidebar (theme.js) falls back to `score` for uel/uecl, where
+    // `match` is otherwise indistinguishable from the near-black background.
+    const hoverColor = colors.match;
+
     // Apply color scheme to copy standings button
     const copyStandingsButton = document.getElementById('copy-standings');
     copyStandingsButton.style.backgroundColor = colors.nav;
     copyStandingsButton.addEventListener('mouseover', () => {
-        copyStandingsButton.style.backgroundColor = colors.match;
+        copyStandingsButton.style.backgroundColor = hoverColor;
     });
     copyStandingsButton.addEventListener('mouseout', () => {
         copyStandingsButton.style.backgroundColor = colors.nav;
@@ -412,7 +417,7 @@ function updateColorScheme() {
     const clearPredictionsButton = document.getElementById('clear-predictions');
     clearPredictionsButton.style.backgroundColor = colors.nav;
     clearPredictionsButton.addEventListener('mouseover', () => {
-        clearPredictionsButton.style.backgroundColor = colors.match;
+        clearPredictionsButton.style.backgroundColor = hoverColor;
     });
     clearPredictionsButton.addEventListener('mouseout', () => {
         clearPredictionsButton.style.backgroundColor = colors.nav;
@@ -423,12 +428,23 @@ function updateColorScheme() {
         if (!button) return;
         button.style.backgroundColor = colors.nav;
         button.addEventListener('mouseover', () => {
-            button.style.backgroundColor = colors.match;
+            button.style.backgroundColor = hoverColor;
         });
         button.addEventListener('mouseout', () => {
             button.style.backgroundColor = colors.nav;
         });
     });
+
+    // Apply color scheme to the standings-panel collapse toggle
+    const panelToggleButton = document.getElementById('toggle-table');
+    if (panelToggleButton) {
+        panelToggleButton.addEventListener('mouseover', () => {
+            panelToggleButton.style.backgroundColor = hoverColor;
+        });
+        panelToggleButton.addEventListener('mouseout', () => {
+            panelToggleButton.style.backgroundColor = '';
+        });
+    }
 }
 
 // Reads the goals for one match: fixed real score if finished, otherwise

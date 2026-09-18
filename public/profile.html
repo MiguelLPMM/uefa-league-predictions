@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UEFA League Predictions — Leaderboard</title>
+    <title>UEFA League Predictions — Profile</title>
     <link rel="icon" href="assets/ucl.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
 
     <script src="vendor/supabase.js"></script>  <!-- Vendored Supabase client library (UMD, sets window.supabase) -->
-    <script type="module" src="js/leaderboard.js"></script>
+    <script type="module" src="js/profile.js"></script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 
@@ -67,51 +67,22 @@
         </div>
     </aside>
     <div class="container">
-        <div class="leaderboard-page">
-            <div id="leaderboard-season-bar" class="leaderboard-season-bar" hidden>
-                <label for="season-select">Season</label>
-                <select id="season-select"></select>
-            </div>
-            <div id="leaderboard-gate" class="page-placeholder" hidden>
-                <p id="leaderboard-gate-message"></p>
-            </div>
-            <div id="leaderboard-content" class="leaderboard-content" hidden>
-                <div class="leaderboard-view-switcher">
-                    <button class="view-tab" data-view="breakdown">Breakdown</button>
-                    <button class="view-tab" data-view="table">Actual Table</button>
-                    <button class="view-tab" data-view="live">Leaderboard</button>
-                </div>
-                <div id="leaderboard-live" class="leaderboard-view"></div>
-                <div id="leaderboard-table" class="leaderboard-view" hidden></div>
-                <div id="leaderboard-breakdown" class="leaderboard-view" hidden></div>
-            </div>
+        <div id="profile-gate-message" class="page-placeholder">
+            <p>Sign in to view your profile.</p>
+        </div>
+        <div id="profile-content" class="admin-content" hidden>
+            <section class="admin-section">
+                <h2>Your account</h2>
+                <div id="profile-account-info" class="admin-list-row"></div>
+            </section>
+
+            <section class="admin-section">
+                <h2>Historical predictions</h2>
+                <p class="admin-hint">If one of the imported entries from before this app existed is actually yours, tell us here — the admin will confirm and link it to your account.</p>
+                <div id="profile-claim-status"></div>
+            </section>
         </div>
     </div>
     <div id="notification" class="notification"></div>
-
-    <div id="drilldown-overlay" class="sidebar-overlay" hidden></div>
-    <div id="drilldown-modal" class="drilldown-modal" hidden>
-        <div class="drilldown-modal-header">
-            <div id="drilldown-user" class="leaderboard-user-chip"></div>
-            <button id="drilldown-close" class="sidebar-close" aria-label="Close">
-                <i class="material-icons">close</i>
-            </button>
-        </div>
-        <div class="drilldown-modal-body">
-            <div>
-                <h3>Predicted Table</h3>
-                <table id="drilldown-standings-table" class="drilldown-standings-table">
-                    <thead>
-                        <tr><th></th><th></th><th>Team</th><th>Off</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div id="drilldown-matches-section">
-                <h3>Match Predictions</h3>
-                <div id="drilldown-matches"></div>
-            </div>
-        </div>
-    </div>
 </body>
 </html>

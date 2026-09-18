@@ -87,7 +87,7 @@ export async function getSeasonActualStandings(competition, seasonYear) {
 export async function getEntriesWithProfiles(competition, seasonYear) {
     const { data: entries, error } = await supabaseClient
         .from('entries')
-        .select('id, user_id, guest_display_name, entry_mode, is_late, late_weeks, submitted_at')
+        .select('id, user_id, guest_key, guest_display_name, entry_mode, is_late, late_weeks, submitted_at')
         .eq('competition', competition)
         .eq('season_year', seasonYear)
         .order('submitted_at', { ascending: true });

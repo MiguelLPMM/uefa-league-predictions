@@ -51,6 +51,7 @@ function renderHeader(user) {
 
     if (user.avatarUrl) {
         const avatar = document.createElement('img');
+        avatar.referrerPolicy = 'no-referrer';
         avatar.src = user.avatarUrl;
         avatar.alt = '';
         header.appendChild(avatar);
@@ -101,7 +102,10 @@ function renderStandingsTable(predictedStandings, actualRankByTeamId, colors) {
         } else {
             const off = team.rank - actualRank;
             offCell.textContent = off > 0 ? `+${off}` : String(off);
-            if (off === 0) offCell.classList.add('off-bangon');
+            if (off === 0) {
+                offCell.classList.add('off-bangon');
+                offCell.style.color = colors.score;
+            }
         }
         tr.appendChild(offCell);
 

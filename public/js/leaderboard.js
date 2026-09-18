@@ -16,7 +16,7 @@ import {
     getFixedRankPredictionsByEntry,
     getSeasonActualStandings,
 } from './api/leaderboard.js';
-import { getFavoriteUserIds, addFavorite, removeFavorite } from './api/favorites.js';
+import { getFavorites, addFavoriteUser, removeFavoriteUser, addFavoriteGuest, removeFavoriteGuest } from './api/favorites.js';
 import { computeActualStandings, computeUserPredictedStandings, computeOffsets } from './scoring.js';
 import { setupDrilldownModal, openDrilldown } from './drilldown.js';
 
@@ -68,12 +68,15 @@ function showGate(message) {
 // `results` must already be in submission-time order (see getEntriesWithProfiles).
 // Guest entries have user_id = null, same as a signed-out visitor's
 // currentUserId - guard explicitly so those never get treated as "self".
-function buildColumnOrder(results, currentUserId, favoriteIds) {
-    const favoriteSet = new Set(favoriteIds);
+// A guest is favorited by guest_key (favoriteUserIds never contains null).
+function buildColumnOrder(results, currentUserId, favoriteUserIds, favoriteGuestKeys) {
     const isSelf = (r) => currentUserId != null && r.entry.user_id === currentUserId;
+    const isFavorite = (r) => (r.entry.user_id != null
+        ? favoriteUserIds.has(r.entry.user_id)
+        : favoriteGuestKeys.has(r.entry.guest_key));
     const self = results.filter(isSelf);
-    const favorites = results.filter((r) => !isSelf(r) && favoriteSet.has(r.entry.user_id));
-    const rest = results.filter((r) => !isSelf(r) && !favoriteSet.has(r.entry.user_id));
+    const favorites = results.filter((r) => !isSelf(r) && isFavorite(r));
+    const rest = results.filter((r) => !isSelf(r) && !isFavorite(r));
     return [...self, ...favorites, ...rest];
 }
 
@@ -95,6 +98,7 @@ function buildUserChip(result, { withAvatar }) {
 
     if (withAvatar && result.entry.avatarUrl) {
         const avatar = document.createElement('img');
+        avatar.referrerPolicy = 'no-referrer';
         avatar.src = result.entry.avatarUrl;
         avatar.alt = '';
         chip.appendChild(avatar);
@@ -114,13 +118,14 @@ function buildUserChip(result, { withAvatar }) {
         chip.appendChild(badge);
     }
 
-    // Guest (unclaimed) entries have no real user_id, and favorites.
-    // favorite_user_id is a not-null FK to auth.users - there's nothing to
-    // favorite them by yet. They become favoritable normally the moment
-    // someone claims them (see the admin merge flow), since that's what
-    // fills in a real user_id.
-    if (!isSelf && result.entry.user_id != null) {
-        const isFavorite = session && session.favoriteIds.includes(result.entry.user_id);
+    // Favoriting is signed-in only - there's no account to attach the
+    // preference to otherwise. Guests (unclaimed entries, user_id null) are
+    // favoritable by their guest_key; the favorite carries over
+    // automatically once they're merged into a real account.
+    if (!isSelf && session && session.currentUserId != null) {
+        const isFavorite = result.entry.user_id != null
+            ? session.favoriteUserIds.has(result.entry.user_id)
+            : session.favoriteGuestKeys.has(result.entry.guest_key);
         const star = document.createElement('button');
         star.type = 'button';
         star.className = isFavorite ? 'favorite-star active' : 'favorite-star';
@@ -128,7 +133,7 @@ function buildUserChip(result, { withAvatar }) {
         star.innerHTML = `<i class="material-icons">${isFavorite ? 'star' : 'star_border'}</i>`;
         star.addEventListener('click', (event) => {
             event.stopPropagation();
-            toggleFavorite(result.entry.user_id, !isFavorite);
+            toggleFavorite(result.entry, !isFavorite);
         });
         chip.appendChild(star);
     }
@@ -146,15 +151,25 @@ function openDrilldownForResult(result) {
     openDrilldown(result.entry, session.matchesCache, predictionsForUser, result.predictedStandings, session.actualRankByTeamId, session.colors, { hideMatches: isFixedRank });
 }
 
-async function toggleFavorite(favoriteUserId, shouldAdd) {
-    if (!session) return;
+async function toggleFavorite(entry, shouldAdd) {
+    if (!session || session.currentUserId == null) return;
     try {
-        if (shouldAdd) {
-            await addFavorite(session.currentUserId, favoriteUserId);
-            if (!session.favoriteIds.includes(favoriteUserId)) session.favoriteIds.push(favoriteUserId);
+        if (entry.user_id != null) {
+            if (shouldAdd) {
+                await addFavoriteUser(session.currentUserId, entry.user_id);
+                session.favoriteUserIds.add(entry.user_id);
+            } else {
+                await removeFavoriteUser(session.currentUserId, entry.user_id);
+                session.favoriteUserIds.delete(entry.user_id);
+            }
         } else {
-            await removeFavorite(session.currentUserId, favoriteUserId);
-            session.favoriteIds = session.favoriteIds.filter((id) => id !== favoriteUserId);
+            if (shouldAdd) {
+                await addFavoriteGuest(session.currentUserId, entry.guest_key);
+                session.favoriteGuestKeys.add(entry.guest_key);
+            } else {
+                await removeFavoriteGuest(session.currentUserId, entry.guest_key);
+                session.favoriteGuestKeys.delete(entry.guest_key);
+            }
         }
     } catch (err) {
         console.error('Failed to update favorite:', err);
@@ -163,13 +178,16 @@ async function toggleFavorite(favoriteUserId, shouldAdd) {
     renderAll();
 }
 
-function renderLiveView(scoreRankedResults) {
+function renderLiveView(scoreRankedResults, colors) {
     const container = document.getElementById('leaderboard-live');
     container.innerHTML = '';
 
     scoreRankedResults.forEach((result, index) => {
         const row = document.createElement('div');
         row.className = 'leaderboard-row';
+        // Stale CSS comment claimed this was "overridden per-competition" -
+        // nothing ever actually did that, so it always showed ucl's blue.
+        row.style.backgroundColor = colors.match;
 
         const rank = document.createElement('span');
         rank.className = 'leaderboard-rank';
@@ -192,7 +210,7 @@ function renderLiveView(scoreRankedResults) {
     });
 }
 
-function renderTableView(actualStandings, columnOrderedResults, colors) {
+function renderTableView(actualStandings, columnOrderedResults, colors, headerColor) {
     const container = document.getElementById('leaderboard-table');
     container.innerHTML = '';
 
@@ -209,13 +227,13 @@ function renderTableView(actualStandings, columnOrderedResults, colors) {
     // (rather than yet another attempt to compute the "correct" offset).
     const corner = document.createElement('th');
     corner.className = 'frozen-col';
-    corner.style.backgroundColor = colors.nav;
+    corner.style.backgroundColor = headerColor;
     headRow.appendChild(corner);
 
     columnOrderedResults.forEach((result) => {
         const th = document.createElement('th');
         th.className = 'user-col';
-        th.style.backgroundColor = colors.nav;
+        th.style.backgroundColor = headerColor;
         th.appendChild(buildUserChip(result, { withAvatar: false }));
         headRow.appendChild(th);
     });
@@ -265,7 +283,10 @@ function renderTableView(actualStandings, columnOrderedResults, colors) {
                 cell.textContent = '—';
             } else {
                 cell.textContent = off > 0 ? `+${off}` : String(off);
-                if (off === 0) cell.classList.add('off-bangon');
+                if (off === 0) {
+                    cell.classList.add('off-bangon');
+                    cell.style.color = colors.score;
+                }
             }
             tr.appendChild(cell);
         });
@@ -281,7 +302,7 @@ function renderTableView(actualStandings, columnOrderedResults, colors) {
 // standings order) - row N under a given user's column shows the team they
 // predicted for position N and how far off that team's actual rank is. A
 // closing Total row shows each user's overall score/bang-on count.
-function renderBreakdownView(columnOrderedResults, actualRankByTeamId, colors) {
+function renderBreakdownView(columnOrderedResults, actualRankByTeamId, colors, headerColor) {
     const container = document.getElementById('leaderboard-breakdown');
     container.innerHTML = '';
 
@@ -294,12 +315,12 @@ function renderBreakdownView(columnOrderedResults, actualRankByTeamId, colors) {
     const headRow = document.createElement('tr');
     const corner = document.createElement('th');
     corner.className = 'frozen-col';
-    corner.style.backgroundColor = colors.nav;
+    corner.style.backgroundColor = headerColor;
     headRow.appendChild(corner);
     columnOrderedResults.forEach((result) => {
         const th = document.createElement('th');
         th.className = 'user-col';
-        th.style.backgroundColor = colors.nav;
+        th.style.backgroundColor = headerColor;
         th.appendChild(buildUserChip(result, { withAvatar: false }));
         headRow.appendChild(th);
     });
@@ -355,7 +376,10 @@ function renderBreakdownView(columnOrderedResults, actualRankByTeamId, colors) {
                 } else {
                     const value = position - actualRank;
                     off.textContent = value > 0 ? `+${value}` : String(value);
-                    if (value === 0) off.classList.add('off-bangon');
+                    if (value === 0) {
+                        off.classList.add('off-bangon');
+                        off.style.color = colors.score;
+                    }
                 }
                 inner.appendChild(off);
 
@@ -373,12 +397,12 @@ function renderBreakdownView(columnOrderedResults, actualRankByTeamId, colors) {
     const totalLabel = document.createElement('td');
     totalLabel.className = 'frozen-col';
     totalLabel.textContent = 'Total';
-    totalLabel.style.backgroundColor = colors.nav;
+    totalLabel.style.backgroundColor = headerColor;
     totalRow.appendChild(totalLabel);
     columnOrderedResults.forEach((result) => {
         const cell = document.createElement('td');
         cell.className = 'user-col';
-        cell.style.backgroundColor = colors.nav;
+        cell.style.backgroundColor = headerColor;
         cell.textContent = `${result.total} · ${result.bangOn} bang on`;
         totalRow.appendChild(cell);
     });
@@ -390,14 +414,19 @@ function renderBreakdownView(columnOrderedResults, actualRankByTeamId, colors) {
 
 function renderAll() {
     if (!session) return;
-    const { results, actualStandings, actualRankByTeamId, currentUserId, favoriteIds, colors } = session;
+    const { comp, results, actualStandings, actualRankByTeamId, currentUserId, favoriteUserIds, favoriteGuestKeys, colors } = session;
 
     const scoreRanked = [...results].sort((a, b) => (a.total - b.total) || (b.bangOn - a.bangOn));
-    const columnOrder = buildColumnOrder(results, currentUserId, favoriteIds);
+    const columnOrder = buildColumnOrder(results, currentUserId, favoriteUserIds, favoriteGuestKeys);
 
-    renderLiveView(scoreRanked);
-    renderTableView(actualStandings, columnOrder, colors);
-    renderBreakdownView(columnOrder, actualRankByTeamId, colors);
+    // `nav` is black for uel/uecl (same as the background), making the
+    // header row/buttons invisible there - ucl keeps `nav` (already right),
+    // uel/uecl fall back to the vivid `score` color instead.
+    const headerColor = comp === 'ucl' ? colors.nav : colors.score;
+
+    renderLiveView(scoreRanked, colors);
+    renderTableView(actualStandings, columnOrder, colors, headerColor);
+    renderBreakdownView(columnOrder, actualRankByTeamId, colors, headerColor);
 }
 
 // competition_seasons.season_year follows the same convention as seasons.label
@@ -489,12 +518,14 @@ async function loadLeaderboard(comp, seasonYear) {
     }
 
     const currentUserId = currentUser ? currentUser.id : null;
-    let favoriteIds;
+    let favoriteUserIds = new Set();
+    let favoriteGuestKeys = new Set();
     try {
-        favoriteIds = await getFavoriteUserIds(currentUserId);
+        const favorites = await getFavorites(currentUserId);
+        favoriteUserIds = favorites.userIds;
+        favoriteGuestKeys = favorites.guestKeys;
     } catch (err) {
         console.error('Failed to load favorites:', err);
-        favoriteIds = [];
     }
 
     const predictionsByUser = new Map();
@@ -539,7 +570,8 @@ async function loadLeaderboard(comp, seasonYear) {
         actualStandings,
         actualRankByTeamId,
         currentUserId,
-        favoriteIds,
+        favoriteUserIds,
+        favoriteGuestKeys,
         colors: getColors(comp),
     };
 
@@ -551,7 +583,11 @@ document.addEventListener('DOMContentLoaded', () => {
     wireCompButtons();
     window.addEventListener('comp-changed', (event) => {
         applySharedTheme(event.detail.comp);
-        loadLeaderboard(event.detail.comp); // switching competition resets to its current season
+        // Carry over whichever season was on screen rather than resetting to
+        // this competition's current one - if it doesn't have a season by
+        // that exact year, loadLeaderboard already falls back to its own
+        // "no data recorded" gate rather than erroring.
+        loadLeaderboard(event.detail.comp, session ? session.seasonYear : undefined);
     });
 
     document.querySelectorAll('.view-tab').forEach((tab) => {

@@ -6,7 +6,7 @@
 //
 // Season conclusion/actual-standings is fully automatic (see
 // api/sync-matches.js) - there is deliberately no admin action for it here.
-import { applySharedTheme } from './theme.js';
+import { applySharedTheme, getColors, themeSelectOptions, wireButtonHover } from './theme.js';
 import { syncUrlToSelectedComp, wireCompButtons, getSelectedComp, linkWithComp } from './compSelector.js';
 import { setupNav } from './nav.js';
 import { onAuthStateChange } from './auth.js';
@@ -35,6 +35,12 @@ let hasEverBeenConfirmedAdmin = false;
 // against - loaded automatically whenever the competition/season selection
 // changes, no admin action needed.
 let currentRoster = [];
+
+// guestKey -> displayName for every currently-unclaimed identity, kept in
+// sync with the datalist so typing an *existing* key can autofill the name
+// that was already used for them (see wireGuestImportForm's key input
+// listener below) instead of the admin having to remember/retype it.
+let guestKeyToDisplayName = new Map();
 
 function seasonLabel(seasonYear) {
     return `${seasonYear - 1}/${String(seasonYear).slice(-2)}`;
@@ -132,6 +138,7 @@ async function refreshGuestKeyOptions() {
     try {
         const identities = await listUnclaimedGuestIdentities();
         datalist.innerHTML = '';
+        guestKeyToDisplayName = new Map(identities.map((identity) => [identity.guestKey, identity.displayName]));
         identities.forEach((identity) => {
             const option = document.createElement('option');
             option.value = identity.guestKey;
@@ -145,6 +152,16 @@ async function refreshGuestKeyOptions() {
 
 function wireGuestImportForm() {
     document.getElementById('guest-import-season').addEventListener('change', loadTeamsForGuestImport);
+
+    // Reuse the same person's existing display name once the typed key
+    // matches one of theirs from a past import - the datalist offers the
+    // key itself, but not the name that goes with it, so this fills that in.
+    document.getElementById('guest-import-key').addEventListener('input', (event) => {
+        const displayName = guestKeyToDisplayName.get(normalizeGuestKey(event.target.value));
+        if (displayName) {
+            document.getElementById('guest-import-name').value = displayName;
+        }
+    });
 
     const form = document.getElementById('guest-import-form');
     form.addEventListener('submit', async (event) => {
@@ -216,6 +233,9 @@ async function renderClaimRequests() {
         return;
     }
 
+    // Content action buttons always hover to `score`, on every competition -
+    // see the .admin-content .sidebar-account-btn rule in theme.js.
+    const hoverColor = getColors(getSelectedComp()).score;
     requests.forEach((request) => {
         const row = document.createElement('div');
         row.className = 'admin-list-row';
@@ -228,6 +248,7 @@ async function renderClaimRequests() {
         approveButton.type = 'button';
         approveButton.className = 'sidebar-account-btn';
         approveButton.textContent = 'Approve';
+        wireButtonHover(approveButton, hoverColor);
         approveButton.addEventListener('click', async () => {
             try {
                 await reviewGuestClaim(request.id, true);
@@ -244,6 +265,7 @@ async function renderClaimRequests() {
         rejectButton.type = 'button';
         rejectButton.className = 'sidebar-account-btn';
         rejectButton.textContent = 'Reject';
+        wireButtonHover(rejectButton, hoverColor);
         rejectButton.addEventListener('click', async () => {
             try {
                 await reviewGuestClaim(request.id, false);
@@ -292,8 +314,12 @@ function wireManualMergeForm() {
         label.textContent = `Found: ${user.displayName}. Pick which guest identity is theirs:`;
         resultBox.appendChild(label);
 
+        const comp = getSelectedComp();
+        const colors = getColors(comp);
+
         const select = document.createElement('select');
         select.className = 'admin-select';
+        select.style.backgroundColor = colors.top8;
         identities.forEach((identity) => {
             const option = document.createElement('option');
             option.value = identity.guestKey;
@@ -303,12 +329,14 @@ function wireManualMergeForm() {
             option.textContent = `${identity.displayName} (${identity.guestKey}) — ${seasonsText}`;
             select.appendChild(option);
         });
+        themeSelectOptions(select, colors.top8, colors.score);
         resultBox.appendChild(select);
 
         const mergeButton = document.createElement('button');
         mergeButton.type = 'button';
         mergeButton.className = 'sidebar-account-btn';
         mergeButton.textContent = 'Merge';
+        wireButtonHover(mergeButton, colors.score);
         mergeButton.addEventListener('click', async () => {
             try {
                 const result = await mergeGuestKey(select.value, user.userId);

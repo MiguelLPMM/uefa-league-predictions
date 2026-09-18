@@ -4,10 +4,12 @@
 // to remember to include it. The modal is built entirely in JS (no markup
 // to add to every HTML file), reusing the same classes as the drill-down
 // modal/sidebar for visual consistency.
-import { getColors } from './theme.js';
+import { getColors, getSidebarHoverColor, wireButtonHover } from './theme.js';
+import { getSelectedComp } from './compSelector.js';
 import {
     listUnclaimedGuestIdentities,
-    getMyGuestClaimRequests,
+    getMyPendingClaimRequest,
+    hasCompletedGuestMerge,
     hasDismissedGuestClaimPrompt,
     dismissGuestClaimPrompt,
     requestGuestClaim,
@@ -29,8 +31,18 @@ function buildModal(user, identities) {
     const overlay = document.createElement('div');
     overlay.className = 'sidebar-overlay';
 
+    const comp = getSelectedComp();
+    const colors = getColors(comp);
+    // Built fresh each time (unlike the leaderboard's persistent drill-down
+    // modal, which theme.js recolors on load/comp-change) - every themed
+    // element here has to set its own color from whatever competition is
+    // currently selected, and wire its own hover (theme.js's sweep only
+    // reaches elements already in the DOM when it last ran).
+    const chromeHoverColor = getSidebarHoverColor(comp);
+
     const modal = document.createElement('div');
     modal.className = 'drilldown-modal guest-claim-modal';
+    modal.style.backgroundColor = colors.nav;
 
     const header = document.createElement('div');
     header.className = 'drilldown-modal-header';
@@ -42,6 +54,7 @@ function buildModal(user, identities) {
     closeButton.className = 'sidebar-close';
     closeButton.setAttribute('aria-label', 'Close');
     closeButton.innerHTML = '<i class="material-icons">close</i>';
+    wireButtonHover(closeButton, chromeHoverColor);
     header.appendChild(closeButton);
     modal.appendChild(header);
 
@@ -58,6 +71,9 @@ function buildModal(user, identities) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'sidebar-account-btn';
+        // Content action buttons always hover to `score`, on every
+        // competition - matches admin.html/profile.html's equivalents.
+        wireButtonHover(button, colors.score);
         const seasonsText = identity.seasons
             .map((season) => `${getColors(season.competition).name} ${seasonLabel(season.seasonYear)}`)
             .join(', ');
@@ -65,7 +81,7 @@ function buildModal(user, identities) {
         button.addEventListener('click', async () => {
             try {
                 await requestGuestClaim(user.id, identity.guestKey);
-                showNotification('Request sent — the admin will review it');
+                showNotification('Request sent — manage this anytime from your Profile');
             } catch (err) {
                 console.error('Failed to send claim request:', err);
                 showNotification('Something went wrong — please try again');
@@ -80,9 +96,11 @@ function buildModal(user, identities) {
     noneButton.type = 'button';
     noneButton.className = 'sidebar-account-btn';
     noneButton.textContent = "None of these are me";
+    wireButtonHover(noneButton, colors.score);
     noneButton.addEventListener('click', async () => {
         try {
             await dismissGuestClaimPrompt(user.id);
+            showNotification('Got it — you can propose this anytime from your Profile');
         } catch (err) {
             console.error('Failed to dismiss guest claim prompt:', err);
         }
@@ -103,12 +121,15 @@ export async function maybeShowGuestClaimPrompt(user) {
     hasCheckedThisPageLoad = true;
 
     try {
-        const [dismissed, myRequests, unclaimed] = await Promise.all([
+        const alreadyMerged = await hasCompletedGuestMerge(user.id);
+        if (alreadyMerged) return; // already linked - any further merge is an admin-only action now
+
+        const [dismissed, pendingRequest, unclaimed] = await Promise.all([
             hasDismissedGuestClaimPrompt(user.id),
-            getMyGuestClaimRequests(user.id),
+            getMyPendingClaimRequest(user.id),
             listUnclaimedGuestIdentities(),
         ]);
-        if (dismissed || myRequests.length > 0 || unclaimed.length === 0) return;
+        if (dismissed || pendingRequest || unclaimed.length === 0) return;
         buildModal(user, unclaimed);
     } catch (err) {
         console.error('Failed to check guest claim status:', err);
