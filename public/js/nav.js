@@ -7,6 +7,7 @@ import { isAdminUser } from './adminConfig.js';
 import { linkWithComp, syncUrlToSelectedComp } from './compSelector.js';
 import { showNotification, resumeQueuedNotification } from './notify.js';
 import { maybeShowGuestClaimPrompt } from './guestClaimPrompt.js';
+import { createBlankAvatar } from './avatar.js';
 
 // Tracks the previously-seen user id so a toast only fires on an actual
 // sign-in/out transition, not on every page load's initial auth check
@@ -21,15 +22,18 @@ function updateNavLinks() {
     const predictionsLink = document.getElementById('nav-predictions');
     const leaderboardLink = document.getElementById('nav-leaderboard');
     const profileLink = document.getElementById('sidebar-profile-link');
-    if (predictionsLink) predictionsLink.href = linkWithComp('index.html');
-    if (leaderboardLink) leaderboardLink.href = linkWithComp('leaderboard.html');
-    if (profileLink) profileLink.href = linkWithComp('profile.html');
+    if (predictionsLink) predictionsLink.href = linkWithComp('/');
+    if (leaderboardLink) leaderboardLink.href = linkWithComp('/leaderboard');
+    if (profileLink) profileLink.href = linkWithComp('/profile');
 
-    // Mark whichever link matches the current page as active.
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    // Mark whichever link matches the current page as active. Pages live at
+    // clean URLs ('/', '/leaderboard'); a stray '.html' or trailing slash
+    // (e.g. a local static server) is normalized away before comparing.
+    const normalize = (path) => (path.replace(/\.html$/, '').replace(/\/index$/, '/').replace(/(.)\/$/, '$1') || '/');
+    const currentPage = normalize(window.location.pathname);
     [predictionsLink, leaderboardLink].forEach((link) => {
         if (!link) return;
-        const linkPage = link.getAttribute('href').split('?')[0];
+        const linkPage = normalize(link.getAttribute('href').split('?')[0]);
         link.classList.toggle('active', linkPage === currentPage);
     });
 }
@@ -39,7 +43,7 @@ function updateAdminLinkVisibility(user) {
     if (!adminLink) return;
     adminLink.hidden = !isAdminUser(user);
     if (!adminLink.hidden) {
-        adminLink.href = linkWithComp('admin.html');
+        adminLink.href = linkWithComp('/admin');
     }
 }
 
@@ -61,15 +65,21 @@ function updateAccountUI(user) {
         displayName = meta.full_name || meta.name || user.email || 'Signed in';
         if (nameEl) nameEl.textContent = displayName;
         if (avatarEl) {
+            let blankEl = document.getElementById('sidebar-user-avatar-blank');
+            if (!blankEl) {
+                blankEl = createBlankAvatar();
+                blankEl.id = 'sidebar-user-avatar-blank';
+                avatarEl.after(blankEl);
+            }
             if (meta.avatar_url) {
-                // Google's avatar CDN sometimes stalls/fails when it sees a
-                // referrer from a third-party origin - dropping it entirely
-                // is what fixes the intermittent "doesn't load for a while".
+                // no-referrer: see createAvatar in avatar.js
                 avatarEl.referrerPolicy = 'no-referrer';
                 avatarEl.src = meta.avatar_url;
                 avatarEl.style.display = '';
+                blankEl.hidden = true;
             } else {
                 avatarEl.style.display = 'none';
+                blankEl.hidden = false;
             }
         }
     } else {

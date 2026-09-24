@@ -1,7 +1,7 @@
 // Keeps the selected competition (ucl/uel/uecl) in sync across the URL's
 // ?comp= query param and localStorage, so it survives both a page reload and
 // navigating between the Predictions/Leaderboard/Admin pages. The URL param
-// takes priority (so a shared link like leaderboard.html?comp=uel always wins
+// takes priority (so a shared link like /leaderboard?comp=uel always wins
 // on load), falling back to the last-used value in localStorage, and finally
 // to 'ucl'.
 const STORAGE_KEY = 'selectedComp';
@@ -95,8 +95,8 @@ export function wireCompButtons() {
 }
 
 // Builds a same-site link that carries the currently selected competition
-// along as a query param, e.g. linkWithComp('leaderboard.html') ->
-// 'leaderboard.html?comp=uel'.
+// along as a query param, e.g. linkWithComp('/leaderboard') ->
+// '/leaderboard?comp=uel'.
 export function linkWithComp(path) {
     return `${path}?comp=${getSelectedComp()}`;
 }

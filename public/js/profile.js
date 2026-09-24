@@ -14,6 +14,9 @@ import { setupNav } from './nav.js';
 import { onAuthStateChange } from './auth.js';
 import { getColors, wireButtonHover } from './theme.js';
 import { showNotification } from './notify.js';
+import { createAvatar } from './avatar.js';
+import { loadMyHistory } from './api/history.js';
+import { mountHistoryChart } from './historyChart.js';
 import {
     listUnclaimedGuestIdentities,
     getMyPendingClaimRequest,
@@ -24,6 +27,10 @@ import {
 
 let currentUser = null;
 
+const COMPETITIONS = ['ucl', 'uel', 'uecl'];
+let historyData = null; // Map(comp -> { seasons, series }) for the signed-in user
+let historyCharts = [];
+
 function seasonLabel(seasonYear) {
     return `${seasonYear - 1}/${String(seasonYear).slice(-2)}`;
 }
@@ -33,16 +40,9 @@ function renderAccountInfo(user) {
     container.innerHTML = '';
 
     const meta = user.user_metadata || {};
-    if (meta.avatar_url) {
-        const avatar = document.createElement('img');
-        avatar.referrerPolicy = 'no-referrer';
-        avatar.src = meta.avatar_url;
-        avatar.alt = '';
-        avatar.style.width = '48px';
-        avatar.style.height = '48px';
-        avatar.style.borderRadius = '50%';
-        container.appendChild(avatar);
-    }
+    const avatar = createAvatar(meta.avatar_url);
+    avatar.classList.add('profile-avatar');
+    container.appendChild(avatar);
 
     const details = document.createElement('span');
     const displayName = meta.full_name || meta.name || 'Signed in';
@@ -158,6 +158,55 @@ async function renderClaimStatus() {
     container.appendChild(list);
 }
 
+function destroyHistoryCharts() {
+    historyCharts.forEach((chart) => chart.destroy());
+    historyCharts = [];
+}
+
+// One chart per competition. Re-run on a competition switch too, since the
+// chart chrome (panel background, accent) follows the selected competition's theme.
+function renderHistory() {
+    if (!historyData) return;
+    const area = document.getElementById('profile-history');
+    destroyHistoryCharts();
+    area.innerHTML = '';
+
+    const colors = getColors(getSelectedComp());
+    const withEntries = COMPETITIONS.filter((comp) => historyData.get(comp)?.series.length);
+    if (withEntries.length === 0) {
+        area.textContent = 'No predictions recorded for you yet.';
+        return;
+    }
+
+    withEntries.forEach((comp) => {
+        const heading = document.createElement('h3');
+        heading.className = 'profile-history-title';
+        heading.textContent = getColors(comp).name;
+        const box = document.createElement('div');
+        area.append(heading, box);
+        historyCharts.push(mountHistoryChart(box, historyData.get(comp), {
+            height: 220,
+            note: false, // explained once, in the section intro
+            background: colors.match,
+            accent: colors.score,
+        }));
+    });
+}
+
+async function loadHistory() {
+    const area = document.getElementById('profile-history');
+    area.textContent = 'Loading…';
+    try {
+        historyData = await loadMyHistory(currentUser.id, COMPETITIONS);
+    } catch (err) {
+        console.error('Failed to load history:', err);
+        historyData = null;
+        area.textContent = 'Failed to load your history — please try again later.';
+        return;
+    }
+    if (currentUser) renderHistory();
+}
+
 function updateGate(user) {
     const gateMessage = document.getElementById('profile-gate-message');
     const content = document.getElementById('profile-content');
@@ -168,8 +217,11 @@ function updateGate(user) {
         content.hidden = false;
         renderAccountInfo(user);
         renderClaimStatus();
+        loadHistory();
     } else {
         currentUser = null;
+        historyData = null;
+        destroyHistoryCharts();
         gateMessage.hidden = false;
         content.hidden = true;
     }
@@ -177,7 +229,10 @@ function updateGate(user) {
 
 document.addEventListener('DOMContentLoaded', () => {
     wireCompButtons();
-    window.addEventListener('comp-changed', (event) => applySharedTheme(event.detail.comp));
+    window.addEventListener('comp-changed', (event) => {
+        applySharedTheme(event.detail.comp);
+        renderHistory();
+    });
 
     setupNav();
 

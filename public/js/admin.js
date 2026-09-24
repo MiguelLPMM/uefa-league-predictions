@@ -74,7 +74,7 @@ function updateGate(user) {
     if (!hasEverBeenConfirmedAdmin) {
         queueNotificationForNextPage('Admin access required');
     }
-    window.location.replace(linkWithComp('leaderboard.html'));
+    window.location.replace(linkWithComp('/leaderboard'));
 }
 
 // Resolves once the <select> options (and its chosen value) are settled, so

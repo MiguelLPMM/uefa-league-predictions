@@ -38,7 +38,7 @@ function maybeRedirectToDefaultLandingPage(matches) {
     if (initialQueryString !== '') return false; // explicit navigation - respect it
     const seasonUnderway = matches.some((m) => m.status === 'FINISHED');
     if (seasonUnderway) {
-        window.location.replace(linkWithComp('leaderboard.html'));
+        window.location.replace(linkWithComp('/leaderboard'));
         return true;
     }
     return false;

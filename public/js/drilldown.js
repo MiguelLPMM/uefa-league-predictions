@@ -4,11 +4,19 @@
 // (public/js/main.js) for visual consistency - inputs are just disabled
 // since this is someone else's read-only picks.
 
-export function setupDrilldownModal() {
+import { createAvatar } from './avatar.js';
+
+// onClose runs after the modal hides (the leaderboard uses it to tear down the
+// drill-down's history chart).
+export function setupDrilldownModal(onClose) {
     const overlay = document.getElementById('drilldown-overlay');
     const closeButton = document.getElementById('drilldown-close');
-    if (overlay) overlay.addEventListener('click', closeDrilldown);
-    if (closeButton) closeButton.addEventListener('click', closeDrilldown);
+    const close = () => {
+        closeDrilldown();
+        if (onClose) onClose();
+    };
+    if (overlay) overlay.addEventListener('click', close);
+    if (closeButton) closeButton.addEventListener('click', close);
 }
 
 export function closeDrilldown() {
@@ -49,13 +57,7 @@ function renderHeader(user) {
     const header = document.getElementById('drilldown-user');
     header.innerHTML = '';
 
-    if (user.avatarUrl) {
-        const avatar = document.createElement('img');
-        avatar.referrerPolicy = 'no-referrer';
-        avatar.src = user.avatarUrl;
-        avatar.alt = '';
-        header.appendChild(avatar);
-    }
+    header.appendChild(createAvatar(user.avatarUrl));
 
     const name = document.createElement('span');
     name.className = 'leaderboard-name';

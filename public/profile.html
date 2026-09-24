@@ -47,16 +47,16 @@
             <i class="material-icons">close</i>
         </button>
         <div class="sidebar-links">
-            <a id="nav-predictions" href="index.html">Predictions</a>
-            <a id="nav-leaderboard" href="leaderboard.html">Leaderboard</a>
-            <a id="nav-admin" href="admin.html" hidden>Admin</a>
+            <a id="nav-predictions" href="/">Predictions</a>
+            <a id="nav-leaderboard" href="/leaderboard">Leaderboard</a>
+            <a id="nav-admin" href="/admin" hidden>Admin</a>
         </div>
         <div class="sidebar-account">
             <button id="sidebar-signin" class="sidebar-account-btn">
                 <i class="material-icons">login</i> Sign in with Google
             </button>
             <div id="sidebar-user" class="sidebar-user" hidden>
-                <a id="sidebar-profile-link" href="profile.html" class="sidebar-user-link">
+                <a id="sidebar-profile-link" href="/profile" class="sidebar-user-link">
                     <img id="sidebar-user-avatar" alt="" />
                     <span id="sidebar-user-name"></span>
                 </a>
@@ -80,6 +80,12 @@
                 <h2>Historical predictions</h2>
                 <p class="admin-hint">If one of the imported entries from before this app existed is actually yours, tell us here — the admin will confirm and link it to your account.</p>
                 <div id="profile-claim-status"></div>
+            </section>
+
+            <section class="admin-section">
+                <h2>History</h2>
+                <p class="admin-hint">Your score in every season, one chart per competition. Lower scores are better, so better seasons sit higher. A * marks a season still in progress: its hollow points can still move.</p>
+                <div id="profile-history"></div>
             </section>
         </div>
     </div>

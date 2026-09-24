@@ -16,12 +16,15 @@ import {
     getFixedRankPredictionsByEntry,
     getSeasonActualStandings,
 } from './api/leaderboard.js';
+import { mountHistoryChart } from './historyChart.js';
+import { loadCompetitionHistory } from './api/history.js';
 import { getFavorites, addFavoriteUser, removeFavoriteUser, addFavoriteGuest, removeFavoriteGuest } from './api/favorites.js';
 import { computeActualStandings, computeUserPredictedStandings, computeOffsets } from './scoring.js';
 import { setupDrilldownModal, openDrilldown } from './drilldown.js';
+import { createAvatar } from './avatar.js';
 
 const VIEW_STORAGE_KEY = 'leaderboardView';
-const VALID_VIEWS = ['live', 'table', 'breakdown'];
+const VALID_VIEWS = ['live', 'table', 'breakdown', 'history'];
 
 // The competition currently selected via the nav buttons - tracked so the
 // season-select and auth-change handlers (which don't otherwise know it) can
@@ -52,8 +55,117 @@ function setSelectedView(view) {
     document.getElementById('leaderboard-live').hidden = view !== 'live';
     document.getElementById('leaderboard-table').hidden = view !== 'table';
     document.getElementById('leaderboard-breakdown').hidden = view !== 'breakdown';
+    document.getElementById('leaderboard-history').hidden = view !== 'history';
     document.querySelectorAll('.view-tab').forEach((tab) => {
         tab.classList.toggle('active', tab.dataset.view === view);
+    });
+    if (view === 'history') showHistoryView();
+}
+
+// --- History: everyone's score per season for this competition -------------
+// Loaded lazily (only once the History tab or a drill-down needs it) and kept
+// for as long as the competition and the signed-in user stay the same - the
+// data covers every season, so switching the season selector doesn't refetch.
+let historyCache = null; // { comp, userId, promise }
+let historyChart = null;
+let historyChartFor = null; // `${comp}|${userId}` the mounted chart was built for
+
+function getHistory(comp, userId) {
+    if (historyCache && historyCache.comp === comp && historyCache.userId === userId) {
+        return historyCache.promise;
+    }
+    const entry = { comp, userId, promise: loadCompetitionHistory(comp, userId) };
+    entry.promise.catch(() => {
+        if (historyCache === entry) historyCache = null; // let the next attempt retry
+    });
+    historyCache = entry;
+    return entry.promise;
+}
+
+function destroyHistoryChart() {
+    if (historyChart) historyChart.destroy();
+    historyChart = null;
+    historyChartFor = null;
+}
+
+async function showHistoryView() {
+    if (!session) return;
+    const { comp, currentUserId, seasonYear, colors } = session;
+    const box = document.getElementById('leaderboard-history');
+    const chartFor = `${comp}|${currentUserId}`;
+
+    if (historyChart && historyChartFor === chartFor) {
+        historyChart.setSelectedYear(seasonYear);
+        return;
+    }
+    destroyHistoryChart();
+    box.innerHTML = '<p class="hist-empty">Loading…</p>';
+
+    let data;
+    try {
+        data = await getHistory(comp, currentUserId);
+    } catch (err) {
+        console.error('Failed to load history:', err);
+        box.innerHTML = '<p class="hist-empty">Could not load the history — please try again later.</p>';
+        return;
+    }
+    // The user may have switched view, competition or season while this loaded.
+    if (!session || session.comp !== comp || session.currentUserId !== currentUserId) return;
+    if (box.hidden) return;
+
+    box.innerHTML = '';
+    historyChart = mountHistoryChart(box, data, {
+        selectedYear: session.seasonYear,
+        height: 340,
+        background: colors.background,
+        accent: colors.score,
+    });
+    historyChartFor = chartFor;
+}
+
+// The drill-down's own small chart: just this person's line, from their first season on.
+let drilldownChart = null;
+let drilldownToken = 0;
+
+function destroyDrilldownChart() {
+    drilldownToken++;
+    if (drilldownChart) drilldownChart.destroy();
+    drilldownChart = null;
+    document.getElementById('drilldown-history-section').hidden = true;
+    document.getElementById('drilldown-history').innerHTML = '';
+}
+
+async function showDrilldownHistory(result) {
+    destroyDrilldownChart();
+    const token = drilldownToken;
+    const { comp, currentUserId, seasonYear, colors } = session;
+    const key = result.entry.user_id != null ? `u:${result.entry.user_id}` : `g:${result.entry.guest_key}`;
+
+    let data;
+    try {
+        data = await getHistory(comp, currentUserId);
+    } catch (err) {
+        console.error('Failed to load history for the drill-down:', err);
+        return;
+    }
+    if (token !== drilldownToken) return; // closed, or another user was opened meanwhile
+    const person = data.series.find((s) => s.key === key);
+    if (!person) return;
+
+    const firstYear = person.points[0].year;
+    const section = document.getElementById('drilldown-history-section');
+    const box = document.getElementById('drilldown-history');
+    section.hidden = false;
+    box.style.backgroundColor = colors.background;
+    drilldownChart = mountHistoryChart(box, {
+        seasons: data.seasons.filter((s) => s.year >= firstYear),
+        series: [{ ...person, isSelf: true }],
+    }, {
+        selectedYear: seasonYear,
+        height: 200,
+        legend: false,
+        background: colors.background,
+        accent: colors.score,
     });
 }
 
@@ -96,13 +208,7 @@ function buildUserChip(result, { withAvatar }) {
         }
     });
 
-    if (withAvatar && result.entry.avatarUrl) {
-        const avatar = document.createElement('img');
-        avatar.referrerPolicy = 'no-referrer';
-        avatar.src = result.entry.avatarUrl;
-        avatar.alt = '';
-        chip.appendChild(avatar);
-    }
+    if (withAvatar) chip.appendChild(createAvatar(result.entry.avatarUrl));
 
     const isSelf = Boolean(session && session.currentUserId != null && result.entry.user_id === session.currentUserId);
     const name = document.createElement('span');
@@ -149,6 +255,7 @@ function openDrilldownForResult(result) {
     const isFixedRank = result.entry.entry_mode === 'fixed_rank';
     const predictionsForUser = isFixedRank ? new Map() : (session.predictionsByUser.get(result.entry.user_id) || new Map());
     openDrilldown(result.entry, session.matchesCache, predictionsForUser, result.predictedStandings, session.actualRankByTeamId, session.colors, { hideMatches: isFixedRank });
+    showDrilldownHistory(result);
 }
 
 async function toggleFavorite(entry, shouldAdd) {
@@ -466,6 +573,7 @@ async function populateSeasonSelector(comp, selectedSeasonYear) {
 async function loadLeaderboard(comp, seasonYear) {
     currentComp = comp;
     session = null;
+    destroyDrilldownChart();
     document.getElementById('leaderboard-gate').hidden = true;
     document.getElementById('leaderboard-content').hidden = true;
 
@@ -577,6 +685,7 @@ async function loadLeaderboard(comp, seasonYear) {
 
     renderAll();
     document.getElementById('leaderboard-content').hidden = false;
+    if (getSelectedView() === 'history') showHistoryView();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -603,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setupNav();
-    setupDrilldownModal();
+    setupDrilldownModal(destroyDrilldownChart);
 
     const comp = syncUrlToSelectedComp();
     applySharedTheme(comp);

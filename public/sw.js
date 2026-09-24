@@ -1,14 +1,13 @@
 // sw.js
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 const SHELL_CACHE = `uefa-predictions-shell-${CACHE_VERSION}`;
 const API_CACHE = `uefa-predictions-api-${CACHE_VERSION}`;
 
 const SHELL_ASSETS = [
     '/',
-    '/index.html',
-    '/leaderboard.html',
-    '/admin.html',
-    '/profile.html',
+    '/leaderboard',
+    '/admin',
+    '/profile',
     '/style.css',
     '/js/main.js',
     '/js/leaderboard.js',
@@ -24,6 +23,9 @@ const SHELL_ASSETS = [
     '/js/scoring.js',
     '/js/drilldown.js',
     '/js/guestClaimPrompt.js',
+    '/js/avatar.js',
+    '/js/historyChart.js',
+    '/js/api/history.js',
     '/js/api/predictions.js',
     '/js/api/leaderboard.js',
     '/js/api/favorites.js',
@@ -89,7 +91,9 @@ async function cacheFirst(request) {
     const cached = await cache.match(request);
     const networkFetch = fetch(request)
         .then((response) => {
-            cache.put(request, response.clone());
+            // Only successful responses: a redirect (e.g. an old /leaderboard.html
+            // bookmark -> /leaderboard) or an error page must never become the cached copy.
+            if (response.ok) cache.put(request, response.clone());
             return response;
         })
         .catch(() => null);
@@ -104,10 +108,10 @@ async function cacheFirst(request) {
 
     if (request.mode === 'navigate') {
         // Serve whichever page was actually requested if we have it cached
-        // (index.html, leaderboard.html, admin.html, ...), falling back to
-        // index.html only if that exact page was never cached.
+        // ('/', '/leaderboard', '/admin', ...), falling back to the
+        // predictions page only if that exact page was never cached.
         const url = new URL(request.url);
-        return (await cache.match(url.pathname)) || cache.match('/index.html');
+        return (await cache.match(url.pathname)) || cache.match('/');
     }
     return Response.error();
 }

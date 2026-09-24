@@ -755,8 +755,10 @@ input[type="text"]::placeholder {
 }
 
 .leaderboard-view-switcher {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.5em;
+    max-width: 520px;
     margin-bottom: clamp(10px, 3vw, 16px);
     flex-shrink: 0;
 }
@@ -765,10 +767,15 @@ input[type="text"]::placeholder {
     background-color: #0230f7; /* Overridden per-competition by theme.js */
     color: white;
     border: none;
-    padding: 0.6em 1.2em;
+    padding: 0.6em 0.3em;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 0.95em;
+    font-size: clamp(0.6rem, 3.1vw, 0.95rem);
+    min-width: 0;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .view-tab.active {
@@ -1189,4 +1196,238 @@ input[type="text"]::placeholder {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     font-size: 16px;
     z-index: 1000;                              /* Ensure it appears above other content */
+}
+
+/* Avatar placeholder: a plain circle in place of a missing/failed photo (see avatar.js),
+   sized to match the photo it stands in for in each context. */
+.avatar-blank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.28);
+    flex-shrink: 0;
+}
+
+.leaderboard-user-chip .avatar-blank {
+    width: clamp(20px, 5vw, 28px);
+    height: clamp(20px, 5vw, 28px);
+}
+
+.sidebar-user .avatar-blank {
+    width: 32px;
+    height: 32px;
+}
+
+.profile-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* History chart (see historyChart.js). --hist-bg / --hist-accent are set per
+   chart from the selected competition's theme; the fallbacks are ucl's. */
+.hist {
+    position: relative;
+    color: white;
+    --hist-bg: #000040;
+    --hist-accent: #00eeff;
+}
+
+/* The plot scrolls sideways when the seasons don't fit; the score axis stays on the left. */
+.hist-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+}
+
+.hist-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.hist-inner {
+    position: relative;
+    display: flex;
+    width: max-content;
+    min-width: 100%;
+}
+
+.hist-axis {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    flex: 0 0 auto;
+    display: block;
+    background: var(--hist-bg);
+}
+
+.hist-plot {
+    flex: 0 0 auto;
+    display: block;
+}
+
+.hist-grid {
+    stroke: rgba(255, 255, 255, 0.14);
+    stroke-width: 1;
+}
+
+.hist-tick,
+.hist-season {
+    fill: rgba(255, 255, 255, 0.65);
+    font-size: 11px;
+    font-family: inherit;
+}
+
+.hist-season.sel {
+    fill: var(--hist-accent);
+    font-weight: 700;
+}
+
+.hist-sel {
+    fill: rgba(255, 255, 255, 0.09);
+}
+
+/* One player: --h / --dl come from the palette index stored in the database. */
+.hs {
+    --c: hsl(var(--h) 72% calc(64% + var(--dl, 0%)));
+    transition: opacity 0.15s;
+    cursor: pointer;
+}
+
+.hl {
+    fill: none;
+    stroke: var(--c);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition: stroke-width 0.15s;
+}
+
+.hs.self .hl {
+    stroke-width: 3;
+}
+
+.hh {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 16;
+    pointer-events: stroke;
+}
+
+.hp {
+    fill: var(--c);
+    stroke: var(--hist-bg);
+    stroke-width: 1.5;
+}
+
+.hp.live {
+    fill: var(--hist-bg);
+    stroke: var(--c);
+    stroke-width: 2;
+}
+
+.hpz {
+    fill: transparent;
+}
+
+.hist svg.has-active .hs {
+    opacity: 0.14;
+}
+
+.hist svg.has-active .hs.on {
+    opacity: 1;
+}
+
+.hs.on .hl {
+    stroke-width: 3.5;
+}
+
+.hs.on .hp {
+    r: 5.5px;
+}
+
+.hist-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.hist-chip {
+    --c: hsl(var(--h) 72% calc(64% + var(--dl, 0%)));
+    font: inherit;
+    font-size: 0.8rem;
+    padding: 3px 9px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hist-chip i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--c);
+    flex: 0 0 10px;
+}
+
+.hist-chip.on {
+    border-color: var(--c);
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.hist-chip.self {
+    font-weight: 700;
+}
+
+.hist-tip {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.88);
+    color: white;
+    padding: 6px 9px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+.hist-tip[hidden] {
+    display: none;
+}
+
+.hist-note {
+    margin: 6px 0 0;
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+.hist-empty {
+    margin: 12px 0;
+    opacity: 0.8;
+}
+
+.profile-history-title {
+    margin: 0.9em 0 0.3em;
+    font-size: 1em;
+}
+
+.profile-history-title:first-child {
+    margin-top: 0;
+}
+
+/* The drill-down chart sits on its own competition-background panel (set in JS) so player
+   colours stay readable against the modal's brighter background. */
+.drilldown-history {
+    border-radius: 5px;
+    padding: 8px 6px 4px;
+    box-sizing: border-box;
 }
